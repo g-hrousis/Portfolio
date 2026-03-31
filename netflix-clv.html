@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Netflix CLV Modeling | Gianni Hrousis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.16);
+      --text: #f0ede8; --text-muted: #888884; --text-dim: #555552;
+      --accent: #c8b89a; --green: #4a9e6b; --green-dim: #1e3d2a;
+      --red: #c44b4b; --red-dim: #3d1e1e;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; line-height: 1.7; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px; pointer-events: none; z-index: 0;
+    }
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 3rem; background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-decoration: none; }
+    .nav-back { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-decoration: none; letter-spacing: 0.04em; }
+    .nav-back:hover { color: var(--accent); }
+
+    .page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 8rem 3rem 6rem; }
+
+    .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; margin-bottom: 2rem; }
+    .breadcrumb a { color: var(--text-dim); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--accent); }
+
+    .project-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+
+    h1 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 400; line-height: 1.1; margin-bottom: 1.5rem; }
+    h1 em { font-style: italic; color: var(--accent); }
+
+    .meta-row { display: flex; gap: 2rem; margin-bottom: 3rem; flex-wrap: wrap; }
+    .meta-item { display: flex; flex-direction: column; gap: 0.25rem; }
+    .meta-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+    .meta-value { font-size: 0.9rem; color: var(--text-muted); }
+
+    .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 3rem; }
+    .stack-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+
+    h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; font-weight: 400; color: var(--text); margin-bottom: 1rem; margin-top: 2.5rem; }
+    h3 { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem; margin-top: 1.5rem; }
+
+    p { font-size: 1rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.9; }
+    p strong { color: var(--text); font-weight: 500; }
+
+    /* ── METRICS GRID ── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 2rem 0; }
+    .metric-box { background: var(--bg2); padding: 1.5rem; }
+    .metric-val { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--text); display: block; margin-bottom: 0.25rem; }
+    .metric-val.green { color: var(--green); }
+    .metric-val.red { color: var(--red); }
+    .metric-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+
+    /* ── DATA TABLE ── */
+    .data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.875rem; }
+    .data-table th { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table .highlight { color: var(--text); font-weight: 500; }
+    .data-table .green { color: var(--green); }
+    .data-table .red { color: var(--red); }
+
+    /* ── CODE BLOCK ── */
+    pre {
+      background: var(--bg2); border: 1px solid var(--border); padding: 1.5rem;
+      overflow-x: auto; margin: 1.5rem 0; font-family: 'DM Mono', monospace;
+      font-size: 12px; line-height: 1.7; color: var(--text-muted);
+    }
+    .code-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 0.5rem; text-transform: uppercase; }
+    .kw { color: #c8b89a; }
+    .fn { color: #7ea8c9; }
+    .num { color: #8eba8e; }
+    .cm { color: #555552; font-style: italic; }
+    .str { color: #c48e8e; }
+
+    /* ── INSIGHT BOX ── */
+    .insight { background: var(--bg2); border-left: 3px solid var(--accent); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .insight-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .insight p { margin: 0; font-size: 0.95rem; }
+
+    /* ── COMPARISON BAR ── */
+    .clv-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 2rem 0; }
+    .clv-box { background: var(--bg2); padding: 2rem; }
+    .clv-type { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+    .clv-amount { font-family: 'DM Serif Display', serif; font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .clv-amount.green { color: var(--green); }
+    .clv-amount.red { color: var(--red); }
+    .clv-bar-wrap { height: 6px; background: var(--bg3); margin-top: 1rem; }
+    .clv-bar { height: 100%; }
+    .clv-bar.green { background: var(--green); }
+    .clv-bar.red { background: var(--red); }
+    .clv-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.5rem; }
+
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
+    .back-link:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .page { padding: 6rem 1.5rem 4rem; }
+      .metrics-grid { grid-template-columns: 1fr; }
+      .clv-compare { grid-template-columns: 1fr; }
+      nav { padding: 1rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo">GH / portfolio</a>
+    <a href="index.html" class="nav-back">← back to projects</a>
+  </nav>
+
+  <div class="page">
+
+    <p class="breadcrumb"><a href="index.html">home</a> / <a href="index.html#projects">projects</a> / netflix-clv</p>
+
+    <p class="project-eyebrow">MKT 326 · Assignment 3</p>
+    <h1>Netflix <em>Customer<br>Lifetime Value</em></h1>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <span class="meta-label">Course</span>
+        <span class="meta-value">MKT 326 — Marketing Analytics</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Professor</span>
+        <span class="meta-value">Rebecca J.H. Wang, Ph.D.</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Institution</span>
+        <span class="meta-value">Lehigh University</span>
+      </div>
+    </div>
+
+    <div class="stack-tags">
+      <span class="stack-tag">R</span>
+      <span class="stack-tag">CLV Modeling</span>
+      <span class="stack-tag">Attrition Analysis</span>
+      <span class="stack-tag">Discount Rate</span>
+      <span class="stack-tag">Marketing ROI</span>
+    </div>
+
+    <hr>
+
+    <!-- ── OVERVIEW ── -->
+    <h2>Overview</h2>
+    <p>
+      This analysis models <strong>Customer Lifetime Value (CLV)</strong> for Netflix's U.S. subscriber base of 52.77 million customers, segmented by whether they watch Netflix original series. The goal is to quantify the financial return of investing in original content by measuring how viewership affects long-run retention and revenue.
+    </p>
+    <p>
+      CLV allows Netflix — and any subscription business — to justify marketing and product investments by expressing the net present value of a customer relationship. The model uses a 10% annual discount rate and a 9-year projection horizon.
+    </p>
+
+    <!-- ── ASSUMPTIONS ── -->
+    <h2>Model Inputs</h2>
+
+    <div class="metrics-grid">
+      <div class="metric-box">
+        <span class="metric-val">$132</span>
+        <span class="metric-label">Avg. Annual Revenue/Customer</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val">60%</span>
+        <span class="metric-label">Cost of Goods Sold</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val">$5</span>
+        <span class="metric-label">Annual Marketing Cost/Customer</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val">52.77M</span>
+        <span class="metric-label">U.S. Subscribers</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val">20%</span>
+        <span class="metric-label">Non-Watcher Share</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val">10%</span>
+        <span class="metric-label">Annual Discount Rate</span>
+      </div>
+    </div>
+
+    <h3>Attrition Rates by Year — Watchers vs. Non-Watchers</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Watcher Attrition</th>
+          <th>Non-Watcher Attrition</th>
+          <th>Watcher Retention</th>
+          <th>Non-Watcher Retention</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="highlight">1</td><td>13%</td><td class="red">20%</td><td class="green">87%</td><td>80%</td></tr>
+        <tr><td class="highlight">2</td><td>17%</td><td class="red">26%</td><td class="green">72.2%</td><td>59.2%</td></tr>
+        <tr><td class="highlight">3</td><td>19%</td><td class="red">30%</td><td class="green">58.5%</td><td>41.4%</td></tr>
+        <tr><td class="highlight">4</td><td>18%</td><td class="red">24%</td><td class="green">48.0%</td><td>31.5%</td></tr>
+        <tr><td class="highlight">5</td><td>19%</td><td class="red">29%</td><td class="green">38.8%</td><td>22.4%</td></tr>
+        <tr><td class="highlight">6</td><td>17%</td><td class="red">25%</td><td class="green">32.2%</td><td>16.8%</td></tr>
+        <tr><td class="highlight">7</td><td>16%</td><td class="red">25%</td><td class="green">27.1%</td><td>12.6%</td></tr>
+        <tr><td class="highlight">8</td><td>15%</td><td class="red">21%</td><td class="green">23.0%</td><td>9.95%</td></tr>
+        <tr><td class="highlight">9</td><td>14%</td><td class="red">19%</td><td class="green">19.8%</td><td>8.06%</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ── R CODE ── -->
+    <h2>R Implementation</h2>
+    <p class="code-label">netflix_clv.R</p>
+    <pre><span class="cm"># Netflix CLV Analysis — MKT 326 Assignment 3
+# Gianni Hrousis | Lehigh University</span>
+
+<span class="cm"># ── Model Inputs ──────────────────────────────────────────</span>
+revenue_per_year  <span class="kw">&lt;-</span> <span class="num">11 * 12</span>     <span class="cm"># $132 annually</span>
+cogs_rate         <span class="kw">&lt;-</span> <span class="num">0.60</span>
+marketing_cost    <span class="kw">&lt;-</span> <span class="num">5</span>
+discount_rate     <span class="kw">&lt;-</span> <span class="num">0.10</span>
+total_customers   <span class="kw">&lt;-</span> <span class="num">52770000</span>
+non_watcher_share <span class="kw">&lt;-</span> <span class="num">0.20</span>
+adoption_rate     <span class="kw">&lt;-</span> <span class="num">0.40</span>
+
+<span class="cm"># ── Attrition Rates ───────────────────────────────────────</span>
+attrition_watcher     <span class="kw">&lt;-</span> <span class="fn">c</span>(<span class="num">.13,.17,.19,.18,.19,.17,.16,.15,.14</span>)
+attrition_non_watcher <span class="kw">&lt;-</span> <span class="fn">c</span>(<span class="num">.20,.26,.30,.24,.29,.25,.25,.21,.19</span>)
+
+<span class="cm"># ── Contribution Margin per Customer per Year ─────────────</span>
+cm <span class="kw">&lt;-</span> revenue_per_year <span class="kw">*</span> (<span class="num">1</span> <span class="kw">-</span> cogs_rate) <span class="kw">-</span> marketing_cost
+<span class="cm"># cm = $132 * 0.40 - $5 = $47.80</span>
+
+<span class="cm"># ── CLV Function ──────────────────────────────────────────</span>
+calc_clv <span class="kw">&lt;-</span> <span class="kw">function</span>(attrition_vec, cm, discount_rate) {
+  n_years     <span class="kw">&lt;-</span> <span class="fn">length</span>(attrition_vec)
+  retention   <span class="kw">&lt;-</span> <span class="fn">numeric</span>(n_years)
+  clv_contrib <span class="kw">&lt;-</span> <span class="fn">numeric</span>(n_years)
+
+  <span class="cm"># Year 1: start at 100% of customers</span>
+  retention[<span class="num">1</span>] <span class="kw">&lt;-</span> <span class="num">1</span> <span class="kw">-</span> attrition_vec[<span class="num">1</span>]
+
+  <span class="cm"># Subsequent years: compound retention</span>
+  <span class="kw">for</span> (i <span class="kw">in</span> <span class="num">2</span>:n_years) {
+    retention[i] <span class="kw">&lt;-</span> retention[i<span class="kw">-</span><span class="num">1</span>] <span class="kw">*</span> (<span class="num">1</span> <span class="kw">-</span> attrition_vec[i])
+  }
+
+  <span class="cm"># Discount each year's contribution to present value
+  # Mid-year convention: customers leave throughout the year</span>
+  <span class="kw">for</span> (i <span class="kw">in</span> <span class="num">1</span>:n_years) {
+    clv_contrib[i] <span class="kw">&lt;-</span> retention[i] <span class="kw">*</span> cm <span class="kw">/</span> (<span class="num">1</span> <span class="kw">+</span> discount_rate)<span class="kw">^</span>(i <span class="kw">-</span> <span class="num">0.5</span>)
+  }
+
+  <span class="fn">sum</span>(clv_contrib)
+}
+
+<span class="cm"># ── Calculate CLV ─────────────────────────────────────────</span>
+clv_watcher     <span class="kw">&lt;-</span> <span class="fn">calc_clv</span>(attrition_watcher,     cm, discount_rate)
+clv_non_watcher <span class="kw">&lt;-</span> <span class="fn">calc_clv</span>(attrition_non_watcher, cm, discount_rate)
+
+<span class="fn">cat</span>(<span class="str">"CLV — Watcher:    $"</span>, <span class="fn">round</span>(clv_watcher, <span class="num">2</span>), <span class="str">"\n"</span>)
+<span class="fn">cat</span>(<span class="str">"CLV — Non-Watcher:$"</span>, <span class="fn">round</span>(clv_non_watcher, <span class="num">2</span>), <span class="str">"\n"</span>)
+
+<span class="cm"># ── Maximum Original Series Spend ────────────────────────</span>
+n_non_watchers  <span class="kw">&lt;-</span> total_customers <span class="kw">*</span> non_watcher_share
+n_converts      <span class="kw">&lt;-</span> n_non_watchers <span class="kw">*</span> adoption_rate
+clv_gain        <span class="kw">&lt;-</span> clv_watcher <span class="kw">-</span> clv_non_watcher
+max_spend       <span class="kw">&lt;-</span> n_converts <span class="kw">*</span> clv_gain
+
+<span class="fn">cat</span>(<span class="str">"Max Series Budget: $"</span>, <span class="fn">format</span>(max_spend, <span class="str">big.mark=","</span>, <span class="str">nsmall=0</span>), <span class="str">"\n"</span>)</pre>
+
+    <hr>
+
+    <!-- ── RESULTS ── -->
+    <h2>Results</h2>
+
+    <div class="clv-compare">
+      <div class="clv-box">
+        <div class="clv-type">Original Series Watcher</div>
+        <div class="clv-amount green">$198.55</div>
+        <p style="font-size:0.8rem;color:var(--text-dim);margin:0;">Higher retention across all 9 years drives significantly greater lifetime value</p>
+        <div class="clv-bar-wrap"><div class="clv-bar green" style="width:100%"></div></div>
+        <div class="clv-sub">19.8% still retained at Year 9</div>
+      </div>
+      <div class="clv-box">
+        <div class="clv-type">Non-Watcher</div>
+        <div class="clv-amount red">$112.43</div>
+        <p style="font-size:0.8rem;color:var(--text-dim);margin:0;">Higher early attrition (20% in Year 1 vs 13%) sharply reduces NPV</p>
+        <div class="clv-bar-wrap"><div class="clv-bar red" style="width:57%"></div></div>
+        <div class="clv-sub">8.1% still retained at Year 9</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">Key Finding</div>
+      <p>Watcher CLV exceeds non-watcher CLV by <strong>$86.12 per customer</strong> — a <strong>76.6% premium</strong>. This gap is primarily driven by attrition differences in the first 3 years, where the compounding effect of early churn dramatically reduces the non-watcher cohort.</p>
+    </div>
+
+    <h2>Maximum Original Series Budget</h2>
+    <p>
+      Netflix has 52.77M U.S. customers, 20% of whom (10.554M) do not watch original series. If a new original series converts 40% of non-watchers into watchers, that is <strong>4.22M new converts</strong>, each gaining $86.12 in CLV.
+    </p>
+
+    <div class="metrics-grid">
+      <div class="metric-box">
+        <span class="metric-val">4.22M</span>
+        <span class="metric-label">Projected Converts</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val green">$86.12</span>
+        <span class="metric-label">CLV Gain Per Convert</span>
+      </div>
+      <div class="metric-box">
+        <span class="metric-val green">$363M</span>
+        <span class="metric-label">Max Series Investment</span>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">Business Implication</div>
+      <p>Netflix can spend up to approximately <strong>$363 million</strong> developing a new original series and still break even on a CLV basis — assuming a 40% adoption rate among non-watchers. Any series that costs less and achieves that conversion rate generates positive NPV. This framework directly justifies Netflix's multi-billion dollar content investment strategy and explains why subscriber retention metrics matter more than one-time acquisition costs.</p>
+    </div>
+
+    <hr>
+
+    <h2>How CLV Justifies Marketing Investment</h2>
+    <p>
+      The core insight of CLV is that a customer is worth more than their next transaction. By discounting the expected future stream of profits to present value, CLV expresses the total economic value of a customer relationship in a single number that can be compared directly against acquisition and retention costs.
+    </p>
+    <p>
+      In Netflix's case, this means the question is not "how much did this original series cost?" but rather "did the series shift enough customers from the non-watcher segment to the watcher segment, and does the resulting CLV increase justify the cost?" The answer, at a 40% adoption rate, is yes — by a significant margin.
+    </p>
+    <p>
+      This logic generalizes to any subscription business: <strong>invest in anything that raises retention, and the CLV math will validate the spend</strong> as long as the cost stays below the aggregate CLV gain across the converted customer base.
+    </p>
+
+    <a href="index.html" class="back-link">← back to all projects</a>
+
+  </div>
+
+</body>
+</html>
