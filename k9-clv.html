@@ -80,6 +80,8 @@
     <div class="stack-tags">
       <span class="stack-tag">MySQL</span>
       <span class="stack-tag">AWS RDS</span>
+      <span class="stack-tag">AWS EC2</span>
+      <span class="stack-tag">AWS S3</span>
       <span class="stack-tag">Python</span>
       <span class="stack-tag">Pandas</span>
       <span class="stack-tag">Seaborn</span>
@@ -97,7 +99,7 @@
       This is a <strong>real-world end-to-end analytics engagement</strong> on 3 years of operational data from a pet daycare and boarding facility in Bethlehem, PA. Starting from a raw 2.4GB MySQL backup exported from the Gingr pet business management platform, I built a cloud database on AWS RDS, cleaned and imported the data, and am now building a full CLV analysis to surface actionable insights for the business owners.
     </p>
     <p>
-      The business offers boarding (priced by room type with 20% multi-dog discount), flat-rate daycare, and grooming. The pricing structure creates natural customer segments with meaningfully different lifetime value profiles — the core hypothesis is that customers who use both boarding and daycare have significantly higher CLV than single-service customers.
+      The business offers boarding (priced by room type with 20% multi-dog discount), flat-rate daycare, and grooming. The pricing structure creates natural customer segments with meaningfully different lifetime value profiles — the core hypothesis is that customers who use both boarding and daycare have significantly higher CLV than single-service customers. The data pipeline runs on AWS end-to-end: raw exports staged in S3, imported via Python on EC2, and loaded into MySQL on RDS — the same architecture pattern used in production data warehouses.
     </p>
     <div class="metrics-grid">
       <div class="metric-box">
@@ -114,9 +116,19 @@
       </div>
       <div class="metric-box">
         <span class="metric-val">AWS</span>
-        <span class="metric-label">Cloud Infrastructure</span>
+        <span class="metric-label">RDS + EC2 + S3</span>
       </div>
     </div>
+    <h2>Infrastructure & Data Pipeline</h2>
+    <p>The data pipeline runs entirely on AWS. The raw 2.4GB Gingr backup was staged in Amazon S3, processed and imported via a Python script running on an EC2 instance, and loaded into a MySQL database hosted on Amazon RDS.</p>
+    <p>Pipeline stages:</p>
+    <ul class="plan-list">
+      <li class="plan-item"><span class="plan-num">01</span>Raw Export: 2.4GB Gingr PMS backup exported and uploaded to S3</li>
+      <li class="plan-item"><span class="plan-num">02</span>EC2 Processing: Python script on EC2 parses, cleans, and batches the raw dump</li>
+      <li class="plan-item"><span class="plan-num">03</span>RDS Import: Cleaned records loaded into MySQL on AWS RDS via batch insert</li>
+      <li class="plan-item"><span class="plan-num">04</span>Analysis Layer: Pandas/Python queries RDS directly for CLV and RFM modeling</li>
+    </ul>
+    <p>This architecture keeps raw data in S3 for reproducibility, offloads compute-heavy import processing to EC2, and uses RDS as the persistent analytical database — mirroring a production data warehouse pattern at small scale.</p>
     <h2>Analysis Plan</h2>
     <ul class="plan-list">
       <li class="plan-item"><span class="plan-num">01</span>Customer overview — total customers, new customer acquisition trend, active vs. churned breakdown</li>
