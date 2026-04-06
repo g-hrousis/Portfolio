@@ -89,6 +89,11 @@
     .r-code .cm { color: #555552; font-style: italic; }
     .r-code .str { color: #c48e8e; }
     .r-code .num { color: #8eba8e; }
+
+    .tab-strip { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .tab { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 0.6rem 1.25rem; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.06em; transition: color 0.15s; }
+    .tab:hover { color: var(--text-muted); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     @media (max-width: 640px) {
       .page { padding: 6rem 1.5rem 4rem; }
       nav { padding: 1rem 1.5rem; }
@@ -116,6 +121,12 @@
       <span class="stack-tag">ggplot2</span><span class="stack-tag">wordcloud</span><span class="stack-tag">udpipe</span>
       <span class="stack-tag">sqldf</span><span class="stack-tag">t-test</span><span class="stack-tag">tm</span>
     </div>
+
+    <div class="tab-strip">
+      <a href="social-listening.html" class="tab active">Analysis</a>
+      <a href="social-listening-code.html" class="tab">R Code</a>
+    </div>
+
     <hr>
 
     <!-- SECTION 1: DATA OVERVIEW -->

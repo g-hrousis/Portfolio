@@ -133,6 +133,11 @@
     .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
     .back-link:hover { color: var(--accent); }
 
+
+    .tab-strip { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .tab { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 0.6rem 1.25rem; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.06em; transition: color 0.15s; }
+    .tab:hover { color: var(--text-muted); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     @media (max-width: 768px) {
       .page { padding: 6rem 1.5rem 4rem; }
       nav { padding: 1rem 1.5rem; }
@@ -178,7 +183,15 @@
     <span class="stack-tag">Cohort Analysis</span><span class="stack-tag">CLV Modeling</span>
     <span class="stack-tag">Price Elasticity</span><span class="stack-tag">Labor Efficiency</span>
   </div>
+
   <hr>
+
+  <div class="page" style="padding-top:0;padding-bottom:0;">
+    <div class="tab-strip" style="margin-bottom:0;">
+      <a href="k9-clv.html" class="tab active">Analysis</a>
+      <a href="k9-clv-code.html" class="tab">Code</a>
+    </div>
+  </div>
 
   <!-- ── OVERVIEW ── -->
   <h2 id="overview">Overview</h2>
