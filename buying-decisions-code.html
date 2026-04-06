@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>R Code — Predicting Buying Decisions | Gianni Hrousis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a; --bg4: #0d1117;
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.16);
+      --text: #f0ede8; --text-muted: #888884; --text-dim: #555552;
+      --accent: #c8b89a; --green: #4a9e6b;
+      --kw: #c792ea; --fn: #82aaff; --str: #c3e88d; --cm: #546e7a; --num: #f78c6c; --op: #89ddff;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; line-height: 1.7; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 3rem; background: rgba(10,10,10,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-decoration: none; }
+    .nav-back { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+    .nav-back:hover { color: var(--accent); }
+    .page { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 8rem 3rem 6rem; }
+    .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 2rem; }
+    .breadcrumb a { color: var(--text-dim); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--accent); }
+    .page-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+    h1 { font-family: 'DM Serif Display', serif; font-size: clamp(1.8rem,4vw,2.75rem); font-weight: 400; line-height: 1.15; margin-bottom: 1.5rem; }
+    h1 em { font-style: italic; color: var(--accent); }
+    .tab-strip { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .tab { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 0.6rem 1.25rem; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.06em; transition: color 0.15s; }
+    .tab:hover { color: var(--text-muted); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    h2 { font-family: 'DM Serif Display', serif; font-size: 1.35rem; font-weight: 400; color: var(--text); margin: 2.5rem 0 0.75rem; }
+    h3 { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin: 2rem 0 0.75rem; }
+    p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.1rem; line-height: 1.85; }
+    p strong { color: var(--text); font-weight: 500; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 2rem; }
+    .stack-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+    .code-block { position: relative; background: var(--bg4); border: 1px solid var(--border); margin: 1rem 0 1.75rem; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+    .code-lang { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+    .code-label-text { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); }
+    .copy-btn { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); background: none; border: 1px solid var(--border); padding: 2px 8px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+    pre { padding: 1.25rem; overflow-x: auto; margin: 0; font-size: 12.5px; line-height: 1.75; }
+    code { font-family: 'DM Mono', monospace; color: var(--text-muted); }
+    .kw { color: var(--kw); } .fn { color: var(--fn); } .str { color: var(--str); }
+    .cm { color: var(--cm); font-style: italic; } .num { color: var(--num); } .op { color: var(--op); }
+    .pk { color: #ffcb6b; }
+    .output-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .output-block { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--text-dim); padding: 1rem 1.25rem; margin: 0.25rem 0 1.75rem; font-family: 'DM Mono', monospace; font-size: 11.5px; line-height: 1.7; color: var(--text-muted); overflow-x: auto; white-space: pre; }
+    .note { background: var(--bg2); border-left: 3px solid var(--accent); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.75; }
+    .note strong { color: var(--text); }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
+    .back-link:hover { color: var(--accent); }
+    @media (max-width: 640px) { .page { padding: 6rem 1.5rem 4rem; } nav { padding: 1rem 1.5rem; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo">GH / portfolio</a>
+  <a href="buying-decisions.html" class="nav-back">← back to analysis</a>
+</nav>
+<div class="page">
+  <p class="breadcrumb"><a href="index.html">home</a> / <a href="buying-decisions.html">buying-decisions</a> / r-code</p>
+  <p class="page-eyebrow">MKT 326 · Assignment 2</p>
+  <h1>Buying Decisions — <em>R Code</em></h1>
+  <div class="stack-tags">
+    <span class="stack-tag">R</span><span class="stack-tag">sqldf</span><span class="stack-tag">glm</span>
+    <span class="stack-tag">lm</span><span class="stack-tag">ggplot2</span><span class="stack-tag">dplyr</span>
+  </div>
+
+  <div class="tab-strip">
+    <a href="buying-decisions.html" class="tab">Analysis</a>
+    <a href="buying-decisions-code.html" class="tab active">R Code</a>
+  </div>
+
+  <!-- ── SETUP ── -->
+  <h2>Setup & Data Import</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">setup.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="fn">knitr</span>::<span class="fn">opts_chunk</span>$<span class="fn">set</span>(warning <span class="op">=</span> <span class="kw">FALSE</span>, message <span class="op">=</span> <span class="kw">FALSE</span>)
+
+<span class="kw">library</span>(<span class="pk">sqldf</span>)
+<span class="kw">library</span>(<span class="pk">ggplot2</span>)
+<span class="kw">library</span>(<span class="pk">dplyr</span>)
+
+<span class="fn">setwd</span>(<span class="str">"~/Desktop/MKTAnalytics/Data"</span>)
+df <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="str">"OnlineBookClub.csv"</span>)
+
+<span class="fn">str</span>(df)
+<span class="fn">head</span>(df)</code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── SQL STATS ── -->
+  <h2>SQL Descriptive Statistics</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">sql_descriptive.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Means via SQL — sqldf runs SQLite which lacks STDEV(),</span>
+<span class="cm"># so we use R's sd() for standard deviations</span>
+<span class="fn">sqldf</span>(<span class="str">"SELECT AVG(total_) AS AvgTotalSpend FROM df"</span>)
+<span class="fn">cat</span>(<span class="str">"SD total spend: "</span>, <span class="fn">sd</span>(df$total_), <span class="str">"\n"</span>)
+
+<span class="fn">sqldf</span>(<span class="str">"SELECT AVG(purch) AS AvgBooksPurchased FROM df"</span>)
+<span class="fn">cat</span>(<span class="str">"SD books purchased: "</span>, <span class="fn">sd</span>(df$purch), <span class="str">"\n"</span>)
+
+<span class="fn">sqldf</span>(<span class="str">"SELECT AVG(last) AS AvgRecency FROM df"</span>)
+<span class="fn">cat</span>(<span class="str">"SD recency: "</span>, <span class="fn">sd</span>(df$last), <span class="str">"\n"</span>)
+
+<span class="cm"># 4) Subscriptions by gender</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT gender,
+         COUNT(*)                                               AS TotalCustomers,
+         SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END)   AS Subscribers,
+         CAST(SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END) AS FLOAT)
+           / COUNT(*)                                          AS SubRate
+  FROM df
+  GROUP BY gender
+"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output</div>
+  <div class="output-block">  AvgTotalSpend
+1        208.32
+SD total spend:  101.36
+
+  AvgBooksPurchased
+1              3.89
+SD books purchased:  3.48
+
+  AvgRecency
+1      12.36
+SD recency:  8.15
+
+  gender  TotalCustomers  Subscribers  SubRate
+1      F           33302         2389    0.072
+2   M/NB           16698         2133    0.128</div>
+
+  <hr>
+
+  <!-- ── LINEAR REGRESSION ── -->
+  <h2>Linear Regression — Predicting Offline Spend</h2>
+  <p>Dependent variable: <strong>total_</strong> (total offline dollars spent). Independent variables: IsFemale, months since first purchase, and all book category counts.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">linear_regression.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Create binary gender indicator</span>
+df$IsFemale <span class="op">&lt;-</span> <span class="fn">ifelse</span>(df$gender <span class="op">==</span> <span class="str">"F"</span>, <span class="num">1</span>, <span class="num">0</span>)
+
+<span class="cm"># Fit linear model</span>
+lin_model <span class="op">&lt;-</span> <span class="fn">lm</span>(total_ <span class="op">~</span> IsFemale <span class="op">+</span> first <span class="op">+</span>
+                  child <span class="op">+</span> youth <span class="op">+</span> cook <span class="op">+</span> do_it <span class="op">+</span>
+                  refernce <span class="op">+</span> art <span class="op">+</span> geog,
+                data <span class="op">=</span> df)
+
+<span class="fn">summary</span>(lin_model)</code></pre>
+  </div>
+  <div class="output-label">Output — summary(lin_model)</div>
+  <div class="output-block">Coefficients:
+             Estimate Std. Error t value Pr(>|t|)
+(Intercept) 149.6275     0.9513  157.36  &lt;2e-16 ***
+IsFemale      0.6786     0.8650    0.78    0.433
+first        -0.0335     0.0384   -0.87    0.382
+child        15.2642     0.4216   36.21  &lt;2e-16 ***
+youth        15.4177     0.6267   24.60  &lt;2e-16 ***
+cook         15.6558     0.4059   38.59  &lt;2e-16 ***
+do_it        15.0080     0.5878   25.53  &lt;2e-16 ***
+refernce     14.5116     0.6985   20.78  &lt;2e-16 ***
+art          14.4600     0.6303   22.94  &lt;2e-16 ***
+geog         15.1818     0.5284   28.73  &lt;2e-16 ***
+---
+Signif. codes: 0 '***'
+
+Residual standard error: 87.6
+Multiple R-squared:  0.2656
+F-statistic: 2012 on 9 and 49990 DF,  p-value: &lt; 2.2e-16</div>
+
+  <hr>
+
+  <!-- ── LOGISTIC REGRESSION ── -->
+  <h2>Logistic Regression — Predicting Subscription</h2>
+  <p>Dependent variable: <strong>subscribe</strong> (yes/no → binary 0/1). Independent variables: recency, monetary, IsFemale, and all book category counts.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">logistic_regression.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Create binary outcome</span>
+df$subscribe_bin <span class="op">&lt;-</span> <span class="fn">ifelse</span>(df$subscribe <span class="op">==</span> <span class="str">"yes"</span>, <span class="num">1</span>, <span class="num">0</span>)
+
+<span class="cm"># Fit logistic model (family = binomial → logistic regression)</span>
+log_model <span class="op">&lt;-</span> <span class="fn">glm</span>(subscribe_bin <span class="op">~</span> last <span class="op">+</span> total_ <span class="op">+</span> IsFemale <span class="op">+</span>
+                   child <span class="op">+</span> youth <span class="op">+</span> cook <span class="op">+</span> do_it <span class="op">+</span>
+                   refernce <span class="op">+</span> art <span class="op">+</span> geog,
+                 data <span class="op">=</span> df,
+                 family <span class="op">=</span> <span class="fn">binomial</span>())
+
+<span class="fn">summary</span>(log_model)
+
+<span class="cm"># Exponentiate coefficients to get odds ratios</span>
+<span class="fn">exp</span>(<span class="fn">coef</span>(log_model))</code></pre>
+  </div>
+  <div class="output-label">Output — Coefficients & Odds Ratios</div>
+  <div class="output-block">Coefficients:
+             Estimate Std. Error z value Pr(>|z|)
+(Intercept) -1.6001     0.0521  -30.71  &lt;2e-16 ***
+last        -0.0947     0.0028  -33.92  &lt;2e-16 ***
+total_       0.0011     0.0002    5.63  &lt;2e-16 ***
+IsFemale    -0.7607     0.0358  -21.27  &lt;2e-16 ***
+child       -0.1862     0.0173  -10.78  &lt;2e-16 ***
+youth       -0.1130     0.0261   -4.33  &lt;2e-16 ***
+cook        -0.2703     0.0171  -15.78  &lt;2e-16 ***
+do_it       -0.5392     0.0270  -19.99  &lt;2e-16 ***
+refernce     0.2347     0.0266    8.84  &lt;2e-16 ***
+art          1.1556     0.0221   52.19  &lt;2e-16 ***
+geog         0.5743     0.0186   30.82  &lt;2e-16 ***
+
+Odds Ratios:
+(Intercept)    last  total_  IsFemale   child   youth    cook   do_it  refernce     art    geog
+     0.2019  0.9096  1.0011    0.4673  0.8301  0.8932  0.7631  0.5832    1.2645  3.1759  1.7758</div>
+
+  <hr>
+
+  <!-- ── DECILE ANALYSIS ── -->
+  <h2>Decile Profiling</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">decile_analysis.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Predict probability of subscribing for each customer</span>
+df$pred_prob <span class="op">&lt;-</span> <span class="fn">predict</span>(log_model, type <span class="op">=</span> <span class="str">"response"</span>)
+
+<span class="cm"># Assign each customer to a decile (1 = lowest prob, 10 = highest prob)</span>
+df$decile <span class="op">&lt;-</span> <span class="fn">ntile</span>(df$pred_prob, <span class="num">10</span>)   <span class="cm"># dplyr::ntile</span>
+
+<span class="cm"># Profile each decile</span>
+decile_profile <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT decile,
+         COUNT(*)                                                AS Customers,
+         AVG(pred_prob)                                         AS AvgPredProb,
+         SUM(subscribe_bin)                                     AS ActualSubscribers,
+         CAST(SUM(subscribe_bin) AS FLOAT) / COUNT(*)           AS ActualSubRate,
+         AVG(total_)                                            AS AvgSpend,
+         AVG(last)                                              AS AvgRecency,
+         AVG(purch)                                             AS AvgBooks,
+         AVG(IsFemale)                                          AS PctFemale
+  FROM df
+  GROUP BY decile
+  ORDER BY decile
+"</span>)
+
+<span class="fn">print</span>(decile_profile)
+
+<span class="cm"># Highlight top and bottom decile</span>
+top_decile <span class="op">&lt;-</span> df[df$decile <span class="op">==</span> <span class="num">10</span>, ]
+bot_decile <span class="op">&lt;-</span> df[df$decile <span class="op">==</span> <span class="num">1</span>,  ]
+
+<span class="fn">cat</span>(<span class="str">"Top decile actual sub rate:"</span>, <span class="fn">mean</span>(top_decile$subscribe_bin), <span class="str">"\n"</span>)
+<span class="fn">cat</span>(<span class="str">"Bot decile actual sub rate:"</span>, <span class="fn">mean</span>(bot_decile$subscribe_bin), <span class="str">"\n"</span>)
+<span class="fn">cat</span>(<span class="str">"Lift (top vs overall):"</span>, <span class="fn">mean</span>(top_decile$subscribe_bin) <span class="op">/</span> <span class="fn">mean</span>(df$subscribe_bin), <span class="str">"\n"</span>)
+
+<span class="cm"># Lift chart</span>
+<span class="fn">ggplot</span>(decile_profile, <span class="fn">aes</span>(x <span class="op">=</span> decile, y <span class="op">=</span> ActualSubRate <span class="op">*</span> <span class="num">100</span>)) <span class="op">+</span>
+  <span class="fn">geom_col</span>(fill <span class="op">=</span> <span class="str">"#1a1a2e"</span>) <span class="op">+</span>
+  <span class="fn">geom_hline</span>(<span class="fn">aes</span>(yintercept <span class="op">=</span> <span class="fn">mean</span>(df$subscribe_bin) <span class="op">*</span> <span class="num">100</span>),
+             color <span class="op">=</span> <span class="str">"#e94560"</span>, linetype <span class="op">=</span> <span class="str">"dashed"</span>) <span class="op">+</span>
+  <span class="fn">scale_x_continuous</span>(breaks <span class="op">=</span> <span class="num">1</span>:<span class="num">10</span>) <span class="op">+</span>
+  <span class="fn">labs</span>(title <span class="op">=</span> <span class="str">"Actual Subscription Rate by Predicted Decile"</span>,
+       x <span class="op">=</span> <span class="str">"Decile (1 = lowest, 10 = highest predicted)"</span>,
+       y <span class="op">=</span> <span class="str">"Actual Sub Rate (%)"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output — Key Deciles</div>
+  <div class="output-block">  decile  Customers  AvgPredProb  ActualSubRate  AvgSpend  AvgRecency  AvgBooks  PctFemale
+1      1       5000       0.0065          0.008    204.34       25.9       4.2      0.782
+...
+10    10       5000       0.3856          0.387    257.35        7.2       6.5      0.419
+
+Top decile actual sub rate: 0.387
+Bot decile actual sub rate: 0.008
+Lift (top vs overall): 4.28</div>
+
+  <a href="buying-decisions.html" class="back-link">← back to analysis</a>
+</div>
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+</body>
+</html>

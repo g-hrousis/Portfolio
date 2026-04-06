@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>R Code — Social Listening | Gianni Hrousis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a; --bg4: #0d1117;
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.16);
+      --text: #f0ede8; --text-muted: #888884; --text-dim: #555552;
+      --accent: #c8b89a; --green: #4a9e6b;
+      --kw: #c792ea; --fn: #82aaff; --str: #c3e88d; --cm: #546e7a; --num: #f78c6c; --op: #89ddff;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; line-height: 1.7; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 3rem; background: rgba(10,10,10,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-decoration: none; }
+    .nav-back { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+    .nav-back:hover { color: var(--accent); }
+    .page { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 8rem 3rem 6rem; }
+    .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 2rem; }
+    .breadcrumb a { color: var(--text-dim); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--accent); }
+    .page-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+    h1 { font-family: 'DM Serif Display', serif; font-size: clamp(1.8rem,4vw,2.75rem); font-weight: 400; line-height: 1.15; margin-bottom: 1.5rem; }
+    h1 em { font-style: italic; color: var(--accent); }
+    .tab-strip { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .tab { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 0.6rem 1.25rem; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.06em; transition: color 0.15s; }
+    .tab:hover { color: var(--text-muted); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    h2 { font-family: 'DM Serif Display', serif; font-size: 1.35rem; font-weight: 400; color: var(--text); margin: 2.5rem 0 0.75rem; }
+    h3 { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin: 2rem 0 0.75rem; }
+    p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.1rem; line-height: 1.85; }
+    p strong { color: var(--text); font-weight: 500; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 2rem; }
+    .stack-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+    .code-block { position: relative; background: var(--bg4); border: 1px solid var(--border); margin: 1rem 0 1.75rem; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+    .code-lang { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+    .code-label-text { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); }
+    .copy-btn { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); background: none; border: 1px solid var(--border); padding: 2px 8px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+    pre { padding: 1.25rem; overflow-x: auto; margin: 0; font-size: 12.5px; line-height: 1.75; }
+    code { font-family: 'DM Mono', monospace; color: var(--text-muted); }
+    .kw { color: var(--kw); } .fn { color: var(--fn); } .str { color: var(--str); }
+    .cm { color: var(--cm); font-style: italic; } .num { color: var(--num); } .op { color: var(--op); }
+    .pk { color: #ffcb6b; }
+    .output-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .output-block { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--text-dim); padding: 1rem 1.25rem; margin: 0.25rem 0 1.75rem; font-family: 'DM Mono', monospace; font-size: 11.5px; line-height: 1.7; color: var(--text-muted); overflow-x: auto; white-space: pre; }
+    .note { background: var(--bg2); border-left: 3px solid var(--accent); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.75; }
+    .note strong { color: var(--text); }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
+    .back-link:hover { color: var(--accent); }
+    @media (max-width: 640px) { .page { padding: 6rem 1.5rem 4rem; } nav { padding: 1rem 1.5rem; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo">GH / portfolio</a>
+  <a href="social-listening.html" class="nav-back">← back to analysis</a>
+</nav>
+<div class="page">
+  <p class="breadcrumb"><a href="index.html">home</a> / <a href="social-listening.html">social-listening</a> / r-code</p>
+  <p class="page-eyebrow">MKT 326 · Assignment 1</p>
+  <h1>Social Listening — <em>R Code</em></h1>
+  <div class="stack-tags">
+    <span class="stack-tag">R</span><span class="stack-tag">sqldf</span><span class="stack-tag">vader</span>
+    <span class="stack-tag">tm</span><span class="stack-tag">wordcloud</span><span class="stack-tag">udpipe</span>
+    <span class="stack-tag">ggplot2</span><span class="stack-tag">gridExtra</span>
+  </div>
+
+  <div class="tab-strip">
+    <a href="social-listening.html" class="tab">Analysis</a>
+    <a href="social-listening-code.html" class="tab active">R Code</a>
+  </div>
+
+  <!-- ── SETUP ── -->
+  <h2>Setup & Data Import</h2>
+  <p>All analyses use three CSV files exported from the Sephora dataset. The <code>reviews</code>, <code>products</code>, and <code>authors</code> tables are joined via SQL using the <code>sqldf</code> package, which lets you run SQLite queries directly against R dataframes.</p>
+
+  <h3>Install packages (run once)</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">install.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Run once — comment out before knitting</span>
+<span class="fn">install.packages</span>(<span class="str">"sqldf"</span>)
+<span class="fn">install.packages</span>(<span class="str">"vader"</span>)
+<span class="fn">install.packages</span>(<span class="str">"tm"</span>)
+<span class="fn">install.packages</span>(<span class="str">"wordcloud"</span>)
+<span class="fn">install.packages</span>(<span class="str">"RColorBrewer"</span>)
+<span class="fn">install.packages</span>(<span class="str">"ggplot2"</span>)
+<span class="fn">install.packages</span>(<span class="str">"gridExtra"</span>)
+<span class="fn">install.packages</span>(<span class="str">"udpipe"</span>)
+<span class="fn">install.packages</span>(<span class="str">"dplyr"</span>)</code></pre>
+  </div>
+
+  <h3>Load libraries & import data</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">setup.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="fn">knitr</span>::<span class="fn">opts_chunk</span>$<span class="fn">set</span>(warning <span class="op">=</span> <span class="kw">FALSE</span>, message <span class="op">=</span> <span class="kw">FALSE</span>)
+
+<span class="kw">library</span>(<span class="pk">sqldf</span>); <span class="kw">library</span>(<span class="pk">vader</span>)
+<span class="kw">library</span>(<span class="pk">tm</span>); <span class="kw">library</span>(<span class="pk">wordcloud</span>); <span class="kw">library</span>(<span class="pk">RColorBrewer</span>)
+<span class="kw">library</span>(<span class="pk">ggplot2</span>); <span class="kw">library</span>(<span class="pk">gridExtra</span>); <span class="kw">library</span>(<span class="pk">grid</span>)
+<span class="kw">library</span>(<span class="pk">udpipe</span>); <span class="kw">library</span>(<span class="pk">dplyr</span>)
+
+<span class="cm"># Set your working directory to wherever your CSVs live</span>
+<span class="fn">setwd</span>(<span class="str">"~/Desktop/MKTAnalytics/Data/Sephora"</span>)
+
+products <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="str">"products.csv"</span>)
+reviews  <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="str">"reviews.csv"</span>)
+authors  <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="str">"authors.csv"</span>)
+
+<span class="cm"># Parse submission date</span>
+reviews$submission_date <span class="op">&lt;-</span> <span class="fn">as.Date</span>(reviews$submission_date, format <span class="op">=</span> <span class="str">"%m/%d/%y"</span>)
+
+<span class="cm"># Join reviews to products to get brand_name</span>
+reviews_products <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT r.*, p.brand_name, p.product_name
+  FROM reviews r INNER JOIN products p ON r.product_id = p.product_id
+"</span>)
+
+<span class="cm"># Filter to the two target brands</span>
+rp <span class="op">&lt;-</span> reviews_products[reviews_products$brand_name <span class="op">%in%</span> <span class="fn">c</span>(<span class="str">"L'Occitane"</span>, <span class="str">"La Mer"</span>), ]</code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── DESCRIPTIVE ── -->
+  <h2>Rating Distributions</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">ratings.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Mean ratings</span>
+<span class="fn">mean</span>(rp$rating)
+<span class="fn">mean</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"L'Occitane"</span>, ]$rating)
+<span class="fn">mean</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"La Mer"</span>, ]$rating)
+
+<span class="cm"># Rating distributions</span>
+<span class="fn">table</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"L'Occitane"</span>, ]$rating)
+<span class="fn">table</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"La Mer"</span>, ]$rating)
+
+<span class="cm"># Histogram layout: overall + per brand</span>
+<span class="fn">layout</span>(<span class="fn">matrix</span>(<span class="fn">c</span>(<span class="num">1</span>,<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>), <span class="num">2</span>, <span class="num">2</span>, byrow <span class="op">=</span> <span class="kw">TRUE</span>))
+
+<span class="fn">hist</span>(rp$rating, breaks <span class="op">=</span> <span class="fn">seq</span>(<span class="num">0</span>, <span class="num">5</span>, by <span class="op">=</span> <span class="num">1</span>),
+     main <span class="op">=</span> <span class="str">"Distribution of Ratings (Both Brands)"</span>,
+     xlab <span class="op">=</span> <span class="str">"Rating (Stars)"</span>)
+
+<span class="fn">hist</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"L'Occitane"</span>, ]$rating,
+     breaks <span class="op">=</span> <span class="fn">seq</span>(<span class="num">0</span>, <span class="num">5</span>, by <span class="op">=</span> <span class="num">1</span>),
+     main <span class="op">=</span> <span class="str">"L'Occitane Ratings"</span>, xlab <span class="op">=</span> <span class="str">"Rating"</span>)
+
+<span class="fn">hist</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"La Mer"</span>, ]$rating,
+     breaks <span class="op">=</span> <span class="fn">seq</span>(<span class="num">0</span>, <span class="num">5</span>, by <span class="op">=</span> <span class="num">1</span>),
+     main <span class="op">=</span> <span class="str">"La Mer Ratings"</span>, xlab <span class="op">=</span> <span class="str">"Rating"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output — Rating Means</div>
+  <div class="output-block">Overall mean:      4.038
+L'Occitane mean:   3.881
+La Mer mean:       4.057</div>
+
+  <hr>
+
+  <!-- ── REVIEW LENGTH ── -->
+  <h2>Review Length Analysis</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">review_length.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Calculate character length of each review</span>
+rp$ReviewTextChars <span class="op">&lt;-</span> <span class="fn">nchar</span>(rp$review_text)
+
+<span class="cm"># Summary stats</span>
+<span class="fn">mean</span>(rp$ReviewTextChars)    <span class="cm"># 404.1</span>
+<span class="fn">median</span>(rp$ReviewTextChars)  <span class="cm"># 327.0</span>
+
+<span class="cm"># Histogram of review lengths</span>
+<span class="fn">ggplot</span>(rp, <span class="fn">aes</span>(x <span class="op">=</span> ReviewTextChars)) <span class="op">+</span>
+  <span class="fn">geom_histogram</span>(binwidth <span class="op">=</span> <span class="num">50</span>, fill <span class="op">=</span> <span class="str">"#1a1a2e"</span>, color <span class="op">=</span> <span class="str">"white"</span>, linewidth <span class="op">=</span> <span class="num">0.3</span>) <span class="op">+</span>
+  <span class="fn">geom_vline</span>(<span class="fn">aes</span>(xintercept <span class="op">=</span> <span class="fn">mean</span>(ReviewTextChars)),
+             color <span class="op">=</span> <span class="str">"#e94560"</span>, linetype <span class="op">=</span> <span class="str">"dashed"</span>, linewidth <span class="op">=</span> <span class="num">1</span>) <span class="op">+</span>
+  <span class="fn">labs</span>(title <span class="op">=</span> <span class="str">"Review Length Distribution"</span>,
+       x <span class="op">=</span> <span class="str">"Review Length (characters)"</span>, y <span class="op">=</span> <span class="str">"# of Reviews"</span>)
+
+<span class="cm"># Segment reviews as long (above mean) or short (at or below mean)</span>
+threshold <span class="op">&lt;-</span> <span class="fn">mean</span>(rp$ReviewTextChars)
+rp$IsLong <span class="op">&lt;-</span> rp$ReviewTextChars <span class="op">&gt;</span> threshold</code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── VADER ── -->
+  <h2>VADER Sentiment Analysis</h2>
+
+  <div class="note"><strong>Runtime note:</strong> The VADER loop over all 1,536 reviews takes approximately 2–10 minutes. Run it once, export the result to CSV with <code>write.csv()</code>, then load the pre-computed CSV on subsequent knit runs by commenting out the loop block.</div>
+
+  <h3>Calculate VADER scores (run once)</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">vader_calculate.R — comment out when knitting</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Create placeholder table with one row per review</span>
+d <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT review_id AS ReviewId, review_text AS ReviewText,
+         0 AS Pos, 0 AS Neu, 0 AS Neg, 0 AS But, 0 AS Compound
+  FROM rp
+"</span>)
+
+<span class="cm"># Loop through every review and score it with VADER</span>
+<span class="kw">for</span> (i <span class="kw">in</span> <span class="num">1</span>:<span class="fn">nrow</span>(d)) {
+  vout       <span class="op">&lt;-</span> <span class="fn">get_vader</span>(d[i, <span class="num">2</span>])
+  d[i, <span class="num">3</span>]  <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(vout[<span class="str">"pos"</span>])
+  d[i, <span class="num">4</span>]  <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(vout[<span class="str">"neu"</span>])
+  d[i, <span class="num">5</span>]  <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(vout[<span class="str">"neg"</span>])
+  d[i, <span class="num">6</span>]  <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(vout[<span class="str">"but_count"</span>])
+  d[i, <span class="num">7</span>]  <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(vout[<span class="str">"compound"</span>])
+}
+
+<span class="cm"># Merge VADER scores back to reviews</span>
+reviews_vader <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT r.*, d.Pos, d.Neu, d.Neg, d.But, d.Compound
+  FROM rp r INNER JOIN d ON r.review_id = d.ReviewId
+"</span>)
+
+reviews_vader$ReviewTextChars <span class="op">&lt;-</span> <span class="fn">nchar</span>(reviews_vader$review_text)
+
+<span class="cm"># Export so you don't have to re-run the loop</span>
+<span class="fn">write.csv</span>(reviews_vader, <span class="str">"reviews_vader.csv"</span>)</code></pre>
+  </div>
+
+  <h3>Load pre-computed VADER scores</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">vader_load.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code>reviews_vader <span class="op">&lt;-</span> <span class="fn">read.csv</span>(<span class="str">"reviews_vader.csv"</span>)
+threshold     <span class="op">&lt;-</span> <span class="fn">mean</span>(reviews_vader$ReviewTextChars)
+reviews_vader$IsLong <span class="op">&lt;-</span> reviews_vader$ReviewTextChars <span class="op">&gt;</span> threshold</code></pre>
+  </div>
+
+  <h3>Average VADER by star rating</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">vader_by_star.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="fn">sqldf</span>(<span class="str">"
+  SELECT rating,
+         AVG(Compound)  AS AvgCompound,
+         AVG(Pos)       AS AvgPos,
+         AVG(Neg)       AS AvgNeg,
+         COUNT(review_id) AS n
+  FROM reviews_vader
+  GROUP BY rating
+  ORDER BY rating
+"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output</div>
+  <div class="output-block">  rating  AvgCompound   AvgPos   AvgNeg    n
+1      1       0.1766   0.0812   0.1944  167
+2      2       0.4591   0.1423   0.0891  118
+3      3       0.5388   0.1687   0.0612  122
+4      4       0.7533   0.2284   0.0251  211
+5      5       0.7588   0.2401   0.0198  918</div>
+
+  <h3>1-Star: Long vs. Short (t-test)</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">ttest_1star.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code>one_star <span class="op">&lt;-</span> reviews_vader[reviews_vader$rating <span class="op">==</span> <span class="num">1</span>, ]
+
+<span class="cm"># Average VADER by length group</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT IsLong, AVG(Compound) AS AvgCompound, COUNT(*) AS n
+  FROM one_star
+  GROUP BY IsLong
+"</span>)
+
+<span class="cm"># Two-sample t-test (Welch, two-tailed)</span>
+<span class="fn">t.test</span>(one_star[one_star$IsLong <span class="op">==</span> <span class="kw">TRUE</span>,  ]$Compound,
+       one_star[one_star$IsLong <span class="op">==</span> <span class="kw">FALSE</span>, ]$Compound)</code></pre>
+  </div>
+  <div class="output-label">Output</div>
+  <div class="output-block">  IsLong  AvgCompound   n
+1  FALSE       0.0902  121
+2   TRUE       0.4039   46
+
+Welch Two Sample t-test
+
+t = 3.3815, df = 165, p-value = 0.0009
+alternative hypothesis: true difference in means is not equal to 0
+95% confidence interval: 0.1321  0.4952
+sample means: Long = 0.4039, Short = 0.0902   ✅ SIGNIFICANT</div>
+
+  <h3>5-Star: Long vs. Short (t-test)</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">ttest_5star.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code>five_star <span class="op">&lt;-</span> reviews_vader[reviews_vader$rating <span class="op">==</span> <span class="num">5</span>, ]
+
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT IsLong, AVG(Compound) AS AvgCompound, COUNT(*) AS n
+  FROM five_star
+  GROUP BY IsLong
+"</span>)
+
+<span class="fn">t.test</span>(five_star[five_star$IsLong <span class="op">==</span> <span class="kw">TRUE</span>,  ]$Compound,
+       five_star[five_star$IsLong <span class="op">==</span> <span class="kw">FALSE</span>, ]$Compound)</code></pre>
+  </div>
+  <div class="output-label">Output</div>
+  <div class="output-block">  IsLong  AvgCompound    n
+1  FALSE       0.7023   573
+2   TRUE       0.8526   345
+
+Welch Two Sample t-test
+
+t = 6.8323, df = 916, p-value = 1.42e-11
+alternative hypothesis: true difference in means is not equal to 0
+95% confidence interval: 0.1066  0.1940
+sample means: Long = 0.8526, Short = 0.7023   ✅ SIGNIFICANT</div>
+
+  <hr>
+
+  <!-- ── WORD CLOUD ── -->
+  <h2>Word Cloud Generation</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">wordcloud.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># ── 5-Star Reviews Word Cloud ──────────────────────────────</span>
+docsS <span class="op">&lt;-</span> <span class="fn">Corpus</span>(<span class="fn">VectorSource</span>(rp[rp$rating <span class="op">==</span> <span class="num">5</span>, ]$review_text))
+
+toSpace <span class="op">&lt;-</span> <span class="fn">content_transformer</span>(<span class="kw">function</span>(x, pattern) <span class="fn">gsub</span>(pattern, <span class="str">" "</span>, x))
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, toSpace, <span class="str">"\u201c"</span>)
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, toSpace, <span class="str">"\u201d"</span>)
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, <span class="fn">content_transformer</span>(tolower))
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, removeNumbers)
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, removePunctuation)
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, <span class="fn">removeWords</span>, <span class="fn">stopwords</span>(<span class="str">"english"</span>))
+<span class="cm"># Remove brand names and generic terms that add no insight</span>
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, <span class="fn">removeWords</span>, <span class="fn">c</span>(<span class="str">"mer"</span>, <span class="str">"la"</span>, <span class="str">"loccitane"</span>,
+                                       <span class="str">"cream"</span>, <span class="str">"product"</span>, <span class="str">"skin"</span>,
+                                       <span class="str">"lamer"</span>, <span class="str">"use"</span>, <span class="str">"using"</span>, <span class="str">"face"</span>))
+docsS <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docsS, stripWhitespace)
+
+mS <span class="op">&lt;-</span> <span class="fn">sort</span>(<span class="fn">rowSums</span>(<span class="fn">as.matrix</span>(<span class="fn">TermDocumentMatrix</span>(docsS))), decreasing <span class="op">=</span> <span class="kw">TRUE</span>)
+dS <span class="op">&lt;-</span> <span class="fn">data.frame</span>(word <span class="op">=</span> <span class="fn">names</span>(mS), freq <span class="op">=</span> mS)
+
+<span class="fn">set.seed</span>(<span class="num">1234</span>)
+<span class="fn">wordcloud</span>(words <span class="op">=</span> dS$word, freq <span class="op">=</span> dS$freq, min.freq <span class="op">=</span> <span class="num">2</span>,
+          max.words <span class="op">=</span> <span class="num">200</span>, random.order <span class="op">=</span> <span class="kw">FALSE</span>, rot.per <span class="op">=</span> <span class="num">0.4</span>,
+          scale <span class="op">=</span> <span class="fn">c</span>(<span class="num">2.2</span>, <span class="num">0.44</span>), colors <span class="op">=</span> <span class="fn">brewer.pal</span>(<span class="num">8</span>, <span class="str">"Dark2"</span>))
+
+<span class="cm"># ── 1-Star Reviews Word Cloud ─────────────────────────────</span>
+<span class="cm"># Same tm_map pipeline, just filtered to 1-star reviews</span>
+make_cloud <span class="op">&lt;-</span> <span class="kw">function</span>(texts, remove_extra <span class="op">=</span> <span class="fn">c</span>(), pal <span class="op">=</span> <span class="str">"Dark2"</span>) {
+  docs <span class="op">&lt;-</span> <span class="fn">Corpus</span>(<span class="fn">VectorSource</span>(texts))
+  toSp <span class="op">&lt;-</span> <span class="fn">content_transformer</span>(<span class="kw">function</span>(x, p) <span class="fn">gsub</span>(p, <span class="str">" "</span>, x))
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, toSp, <span class="str">"“"</span>); docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, toSp, <span class="str">"”"</span>)
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, <span class="fn">content_transformer</span>(tolower))
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, removeNumbers)
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, removePunctuation)
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, <span class="fn">removeWords</span>, <span class="fn">stopwords</span>(<span class="str">"english"</span>))
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, <span class="fn">removeWords</span>,
+                  <span class="fn">c</span>(<span class="str">"mer"</span>, <span class="str">"la"</span>, <span class="str">"loccitane"</span>, <span class="str">"cream"</span>, <span class="str">"product"</span>,
+                    <span class="str">"skin"</span>, <span class="str">"lamer"</span>, <span class="str">"use"</span>, <span class="str">"using"</span>, <span class="str">"face"</span>, remove_extra))
+  docs <span class="op">&lt;-</span> <span class="fn">tm_map</span>(docs, stripWhitespace)
+  m <span class="op">&lt;-</span> <span class="fn">sort</span>(<span class="fn">rowSums</span>(<span class="fn">as.matrix</span>(<span class="fn">TermDocumentMatrix</span>(docs))), decreasing <span class="op">=</span> <span class="kw">TRUE</span>)
+  d <span class="op">&lt;-</span> <span class="fn">data.frame</span>(word <span class="op">=</span> <span class="fn">names</span>(m), freq <span class="op">=</span> m)
+  <span class="fn">set.seed</span>(<span class="num">1234</span>)
+  <span class="fn">wordcloud</span>(words <span class="op">=</span> d$word, freq <span class="op">=</span> d$freq, min.freq <span class="op">=</span> <span class="num">2</span>,
+            max.words <span class="op">=</span> <span class="num">200</span>, random.order <span class="op">=</span> <span class="kw">FALSE</span>, rot.per <span class="op">=</span> <span class="num">0.35</span>,
+            scale <span class="op">=</span> <span class="fn">c</span>(<span class="num">2.2</span>, <span class="num">0.44</span>),
+            colors <span class="op">=</span> <span class="fn">brewer.pal</span>(<span class="num">8</span>, pal))
+  <span class="fn">invisible</span>(d)
+}
+
+<span class="cm"># Both brands — 5-star high-rated</span>
+<span class="fn">make_cloud</span>(rp[rp$rating <span class="op">==</span> <span class="num">5</span>, ]$review_text)
+<span class="cm"># Both brands — 1-star low-rated</span>
+<span class="fn">make_cloud</span>(rp[rp$rating <span class="op">==</span> <span class="num">1</span>, ]$review_text, pal <span class="op">=</span> <span class="str">"Reds"</span>)
+
+<span class="cm"># Per-brand comparison</span>
+<span class="fn">make_cloud</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"L'Occitane"</span> <span class="op">&amp;</span> rp$rating <span class="op">==</span> <span class="num">5</span>, ]$review_text)
+<span class="fn">make_cloud</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"La Mer"</span>     <span class="op">&amp;</span> rp$rating <span class="op">==</span> <span class="num">5</span>, ]$review_text)
+<span class="fn">make_cloud</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"L'Occitane"</span> <span class="op">&amp;</span> rp$rating <span class="op">==</span> <span class="num">1</span>, ]$review_text, pal <span class="op">=</span> <span class="str">"Reds"</span>)
+<span class="fn">make_cloud</span>(rp[rp$brand_name <span class="op">==</span> <span class="str">"La Mer"</span>     <span class="op">&amp;</span> rp$rating <span class="op">==</span> <span class="num">1</span>, ]$review_text, pal <span class="op">=</span> <span class="str">"Reds"</span>)</code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── POS ── -->
+  <h2>Part-of-Speech Tagging</h2>
+  <div class="note"><strong>Runtime note:</strong> The udpipe annotation loop is slow — expect 5–15 minutes for 900+ reviews. Download the model once; it saves locally and reloads on subsequent runs.</div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">pos_tagging.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Download English model (only needed once)</span>
+pos_en_model <span class="op">&lt;-</span> <span class="fn">udpipe_download_model</span>(language <span class="op">=</span> <span class="str">"english"</span>)
+pos_model    <span class="op">&lt;-</span> <span class="fn">udpipe_load_model</span>(pos_en_model$file_model)
+
+<span class="cm"># Tag 5-star reviews</span>
+reviews_5 <span class="op">&lt;-</span> rp[rp$rating <span class="op">==</span> <span class="num">5</span>, ]
+
+pos_df <span class="op">&lt;-</span> <span class="fn">data.frame</span>(review_id <span class="op">=</span> <span class="fn">integer</span>(),
+                     token     <span class="op">=</span> <span class="fn">character</span>(),
+                     upos      <span class="op">=</span> <span class="fn">character</span>(),
+                     stringsAsFactors <span class="op">=</span> <span class="kw">FALSE</span>)
+
+<span class="kw">for</span> (i <span class="kw">in</span> <span class="num">1</span>:<span class="fn">nrow</span>(reviews_5)) {
+  rid   <span class="op">&lt;-</span> reviews_5[i, <span class="str">"review_id"</span>]
+  anno  <span class="op">&lt;-</span> <span class="fn">udpipe_annotate</span>(pos_model, x <span class="op">=</span> reviews_5[i, <span class="str">"review_text"</span>])
+  anno_df <span class="op">&lt;-</span> <span class="fn">as.data.frame</span>(anno)
+  pos_df  <span class="op">&lt;-</span> <span class="fn">rbind</span>(pos_df, <span class="fn">cbind</span>(review_id <span class="op">=</span> rid,
+                                    anno_df[, <span class="fn">c</span>(<span class="str">"token"</span>, <span class="str">"upos"</span>)]))
+}
+
+<span class="cm"># Extract adjectives only</span>
+adj_5star <span class="op">&lt;-</span> pos_df[pos_df$upos <span class="op">==</span> <span class="str">"ADJ"</span>, ]
+
+<span class="cm"># Word cloud of 5-star adjectives</span>
+docsAdj <span class="op">&lt;-</span> <span class="fn">Corpus</span>(<span class="fn">VectorSource</span>(adj_5star$token))
+<span class="cm"># apply tm_map pipeline (lowercase, remove stopwords, strip whitespace)</span>
+mAdj <span class="op">&lt;-</span> <span class="fn">sort</span>(<span class="fn">rowSums</span>(<span class="fn">as.matrix</span>(<span class="fn">TermDocumentMatrix</span>(docsAdj))), decreasing <span class="op">=</span> <span class="kw">TRUE</span>)
+dAdj <span class="op">&lt;-</span> <span class="fn">data.frame</span>(word <span class="op">=</span> <span class="fn">names</span>(mAdj), freq <span class="op">=</span> mAdj)
+<span class="fn">head</span>(dAdj, <span class="num">20</span>)  <span class="cm"># top adjectives</span>
+
+<span class="fn">wordcloud</span>(words <span class="op">=</span> dAdj$word, freq <span class="op">=</span> dAdj$freq, min.freq <span class="op">=</span> <span class="num">2</span>,
+          max.words <span class="op">=</span> <span class="num">200</span>, random.order <span class="op">=</span> <span class="kw">FALSE</span>,
+          colors <span class="op">=</span> <span class="fn">brewer.pal</span>(<span class="num">8</span>, <span class="str">"Dark2"</span>))
+
+<span class="cm"># ── Repeat for 1-star reviews (dissatisfied adjectives) ──</span>
+reviews_1 <span class="op">&lt;-</span> rp[rp$rating <span class="op">==</span> <span class="num">1</span>, ]
+pos_df_neg <span class="op">&lt;-</span> <span class="fn">data.frame</span>(review_id <span class="op">=</span> <span class="fn">integer</span>(), token <span class="op">=</span> <span class="fn">character</span>(),
+                          upos <span class="op">=</span> <span class="fn">character</span>(), stringsAsFactors <span class="op">=</span> <span class="kw">FALSE</span>)
+
+<span class="kw">for</span> (i <span class="kw">in</span> <span class="num">1</span>:<span class="fn">nrow</span>(reviews_1)) {
+  rid     <span class="op">&lt;-</span> reviews_1[i, <span class="str">"review_id"</span>]
+  anno    <span class="op">&lt;-</span> <span class="fn">udpipe_annotate</span>(pos_model, x <span class="op">=</span> reviews_1[i, <span class="str">"review_text"</span>])
+  anno_df <span class="op">&lt;-</span> <span class="fn">as.data.frame</span>(anno)
+  pos_df_neg <span class="op">&lt;-</span> <span class="fn">rbind</span>(pos_df_neg, <span class="fn">cbind</span>(review_id <span class="op">=</span> rid,
+                                              anno_df[, <span class="fn">c</span>(<span class="str">"token"</span>, <span class="str">"upos"</span>)]))
+}
+
+adj_1star <span class="op">&lt;-</span> pos_df_neg[pos_df_neg$upos <span class="op">==</span> <span class="str">"ADJ"</span>, ]
+<span class="fn">head</span>(<span class="fn">sort</span>(<span class="fn">table</span>(adj_1star$token), decreasing <span class="op">=</span> <span class="kw">TRUE</span>), <span class="num">20</span>)  <span class="cm"># top dissatisfied adjectives</span></code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── BRAND COMPARE ── -->
+  <h2>Brand Comparison & Customer Attributes</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">brand_analysis.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># VADER compound by brand</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT brand_name,
+         AVG(Compound) AS AvgCompound,
+         COUNT(*) AS n
+  FROM reviews_vader
+  GROUP BY brand_name
+"</span>)
+
+<span class="cm"># Positive/negative ratio (4+5 star vs 1+2 star)</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT brand_name,
+         SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS PositiveReviews,
+         SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS NegativeReviews,
+         CAST(SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS FLOAT) /
+           SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS PosNegRatio
+  FROM reviews_vader
+  GROUP BY brand_name
+"</span>)
+
+<span class="cm"># Join authors for skin type and eye color</span>
+rv_auth <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT rv.*, a.skin_type, a.eye_color, a.skin_tone
+  FROM reviews_vader rv
+  LEFT JOIN authors a ON rv.author_id = a.author_id
+"</span>)
+
+<span class="cm"># Average rating by skin type</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT skin_type, AVG(rating) AS AvgRating, COUNT(*) AS n
+  FROM rv_auth
+  WHERE skin_type IS NOT NULL AND skin_type != ''
+  GROUP BY skin_type ORDER BY AvgRating DESC
+"</span>)
+
+<span class="cm"># Average rating by eye color</span>
+<span class="fn">sqldf</span>(<span class="str">"
+  SELECT eye_color, AVG(rating) AS AvgRating, COUNT(*) AS n
+  FROM rv_auth
+  WHERE eye_color IS NOT NULL AND eye_color != ''
+  GROUP BY eye_color ORDER BY AvgRating DESC
+"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output — VADER by Brand</div>
+  <div class="output-block">  brand_name   AvgCompound    n
+1 L'Occitane        0.6208  159
+2 La Mer            0.6581 1377
+
+Pos/Neg Ratio:
+  brand_name  PositiveReviews  NegativeReviews  PosNegRatio
+1 L'Occitane               103               34         3.03
+2 La Mer                  1026              251         4.09</div>
+
+  <hr>
+
+  <!-- ── VISUALIZATIONS ── -->
+  <h2>Data Visualizations</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">R</span><span class="code-label-text">visualizations.R</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Review volume by month</span>
+reviews$ReviewMonthInt <span class="op">&lt;-</span> <span class="fn">as.integer</span>(<span class="fn">format</span>(reviews$submission_date, <span class="str">"%m"</span>))
+reviews$ReviewMonth    <span class="op">&lt;-</span> <span class="fn">format</span>(reviews$submission_date, <span class="str">"%b"</span>)
+reviews$ReviewYear     <span class="op">&lt;-</span> <span class="fn">format</span>(reviews$submission_date, <span class="str">"%y"</span>)
+
+reviewsByMonth <span class="op">&lt;-</span> <span class="fn">sqldf</span>(<span class="str">"
+  SELECT ReviewMonth, ReviewMonthInt, COUNT(review_id) AS Reviews
+  FROM reviews
+  WHERE ReviewYear BETWEEN 15 AND 22
+  GROUP BY ReviewMonth, ReviewMonthInt
+  ORDER BY ReviewMonthInt
+"</span>)
+
+<span class="fn">ggplot</span>(reviewsByMonth,
+       <span class="fn">aes</span>(x <span class="op">=</span> <span class="fn">reorder</span>(ReviewMonth, ReviewMonthInt), y <span class="op">=</span> Reviews)) <span class="op">+</span>
+  <span class="fn">geom_bar</span>(stat <span class="op">=</span> <span class="str">"identity"</span>, fill <span class="op">=</span> <span class="str">"#1a1a2e"</span>) <span class="op">+</span>
+  <span class="fn">labs</span>(title <span class="op">=</span> <span class="str">"Luxury Brands Review Volume by Month"</span>,
+       x <span class="op">=</span> <span class="str">"Month"</span>, y <span class="op">=</span> <span class="str">"# of Reviews"</span>)
+
+<span class="cm"># Average rating by skin type — bar chart</span>
+skin_avg <span class="op">&lt;-</span> rv_auth[<span class="op">!</span><span class="fn">is.na</span>(rv_auth$skin_type) <span class="op">&amp;</span> rv_auth$skin_type <span class="op">!=</span> <span class="str">""</span>, ]
+<span class="fn">ggplot</span>(skin_avg, <span class="fn">aes</span>(x <span class="op">=</span> <span class="fn">reorder</span>(skin_type, <span class="op">-</span>rating), y <span class="op">=</span> rating)) <span class="op">+</span>
+  <span class="fn">geom_bar</span>(stat <span class="op">=</span> <span class="str">"summary"</span>, fun <span class="op">=</span> mean, fill <span class="op">=</span> <span class="str">"#c8b89a"</span>) <span class="op">+</span>
+  <span class="fn">coord_cartesian</span>(ylim <span class="op">=</span> <span class="fn">c</span>(<span class="num">3.5</span>, <span class="num">4.3</span>)) <span class="op">+</span>
+  <span class="fn">labs</span>(title <span class="op">=</span> <span class="str">"Average Rating by Skin Type"</span>,
+       x <span class="op">=</span> <span class="str">"Skin Type"</span>, y <span class="op">=</span> <span class="str">"Avg Rating"</span>)</code></pre>
+  </div>
+
+  <a href="social-listening.html" class="back-link">← back to analysis</a>
+</div>
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+</body>
+</html>

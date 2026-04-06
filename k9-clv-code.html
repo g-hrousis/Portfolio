@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Code — K9 Resorts CLV | Gianni Hrousis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a; --bg4: #0d1117;
+      --border: rgba(255,255,255,0.08);
+      --text: #f0ede8; --text-muted: #888884; --text-dim: #555552;
+      --accent: #c8b89a; --green: #4a9e6b;
+      --kw: #c792ea; --fn: #82aaff; --str: #c3e88d; --cm: #546e7a; --num: #f78c6c; --op: #89ddff;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; line-height: 1.7; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 3rem; background: rgba(10,10,10,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-decoration: none; }
+    .nav-back { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+    .nav-back:hover { color: var(--accent); }
+    .page { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 8rem 3rem 6rem; }
+    .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 2rem; }
+    .breadcrumb a { color: var(--text-dim); text-decoration: none; }
+    .breadcrumb a:hover { color: var(--accent); }
+    .page-eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--green); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+    h1 { font-family: 'DM Serif Display', serif; font-size: clamp(1.8rem,4vw,2.75rem); font-weight: 400; line-height: 1.15; margin-bottom: 1.5rem; }
+    h1 em { font-style: italic; color: var(--accent); }
+    .tab-strip { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .tab { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-dim); text-decoration: none; padding: 0.6rem 1.25rem; border-bottom: 2px solid transparent; margin-bottom: -1px; letter-spacing: 0.06em; transition: color 0.15s; }
+    .tab:hover { color: var(--text-muted); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    h2 { font-family: 'DM Serif Display', serif; font-size: 1.35rem; font-weight: 400; color: var(--text); margin: 2.5rem 0 0.75rem; }
+    h3 { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin: 2rem 0 0.75rem; }
+    p { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.1rem; line-height: 1.85; }
+    p strong { color: var(--text); font-weight: 500; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    .stack-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 2rem; }
+    .stack-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+    .code-block { position: relative; background: var(--bg4); border: 1px solid var(--border); margin: 1rem 0 1.75rem; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+    .code-lang { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+    .code-label-text { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); }
+    .copy-btn { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); background: none; border: 1px solid var(--border); padding: 2px 8px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+    pre { padding: 1.25rem; overflow-x: auto; margin: 0; font-size: 12.5px; line-height: 1.75; }
+    code { font-family: 'DM Mono', monospace; color: var(--text-muted); }
+    .kw { color: var(--kw); } .fn { color: var(--fn); } .str { color: var(--str); }
+    .cm { color: var(--cm); font-style: italic; } .num { color: var(--num); } .op { color: var(--op); }
+    .pk { color: #ffcb6b; }
+    .output-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .output-block { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--text-dim); padding: 1rem 1.25rem; margin: 0.25rem 0 1.75rem; font-family: 'DM Mono', monospace; font-size: 11.5px; line-height: 1.7; color: var(--text-muted); overflow-x: auto; white-space: pre; }
+    .note { background: var(--bg2); border-left: 3px solid var(--accent); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.88rem; color: var(--text-muted); line-height: 1.75; }
+    .note strong { color: var(--text); }
+    .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
+    .back-link:hover { color: var(--accent); }
+    @media (max-width: 640px) { .page { padding: 6rem 1.5rem 4rem; } nav { padding: 1rem 1.5rem; } }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-logo">GH / portfolio</a>
+  <a href="k9-clv.html" class="nav-back">← back to analysis</a>
+</nav>
+<div class="page">
+  <p class="breadcrumb"><a href="index.html">home</a> / <a href="k9-clv.html">k9-clv</a> / code</p>
+  <p class="page-eyebrow">K9 Resorts · End-to-End Pipeline</p>
+  <h1>K9 Resorts CLV — <em>Code</em></h1>
+  <div class="stack-tags">
+    <span class="stack-tag">Python</span><span class="stack-tag">Pandas</span><span class="stack-tag">MySQL</span>
+    <span class="stack-tag">AWS RDS</span><span class="stack-tag">AWS EC2</span><span class="stack-tag">AWS S3</span>
+    <span class="stack-tag">RFM Segmentation</span><span class="stack-tag">BG/NBD</span><span class="stack-tag">lifetimes</span>
+  </div>
+
+  <div class="tab-strip">
+    <a href="k9-clv.html" class="tab">Analysis</a>
+    <a href="k9-clv-code.html" class="tab active">Code</a>
+  </div>
+
+  <!-- ── PIPELINE ── -->
+  <h2>AWS Data Pipeline</h2>
+  <p>The raw Gingr database backup required preprocessing before it could be loaded into RDS. The primary issues were DEFINER clauses (which RDS rejects) and archive tables that caused the import to stall. The script below handles both.</p>
+
+  <h3>Step 1 — Strip DEFINER clauses & upload to S3</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Bash / Python</span><span class="code-label-text">preprocess_dump.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="kw">import</span> re, boto3
+
+<span class="cm"># Run on EC2 after downloading the raw dump from S3</span>
+<span class="cm"># sed strips DEFINER clauses that RDS rejects</span>
+<span class="cm"># Then re-upload the clean version</span>
+
+s3 <span class="op">=</span> boto3.<span class="fn">client</span>(<span class="str">'s3'</span>)
+s3.<span class="fn">download_file</span>(<span class="str">'your-bucket'</span>, <span class="str">'gingr_backup.sql'</span>, <span class="str">'/tmp/gingr_raw.sql'</span>)
+
+<span class="kw">with</span> <span class="fn">open</span>(<span class="str">'/tmp/gingr_raw.sql'</span>, <span class="str">'r'</span>, encoding<span class="op">=</span><span class="str">'utf-8'</span>, errors<span class="op">=</span><span class="str">'replace'</span>) <span class="kw">as</span> f:
+    content <span class="op">=</span> f.<span class="fn">read</span>()
+
+<span class="cm"># Remove DEFINER=`user`@`host` patterns</span>
+content <span class="op">=</span> re.<span class="fn">sub</span>(<span class="str">r'DEFINER=`[^`]+`@`[^`]+`'</span>, <span class="str">''</span>, content)
+
+<span class="cm"># Skip archive tables that cause stalls</span>
+SKIP_TABLES <span class="op">=</span> [<span class="str">'archive_reservations'</span>, <span class="str">'archive_payments'</span>]
+lines, skip <span class="op">=</span> [], <span class="kw">False</span>
+<span class="kw">for</span> line <span class="kw">in</span> content.<span class="fn">splitlines</span>():
+    <span class="kw">if</span> <span class="fn">any</span>(t <span class="kw">in</span> line <span class="kw">for</span> t <span class="kw">in</span> SKIP_TABLES): skip <span class="op">=</span> <span class="kw">True</span>
+    <span class="kw">if</span> skip <span class="kw">and</span> line.<span class="fn">startswith</span>(<span class="str">'-- Table'</span>): skip <span class="op">=</span> <span class="kw">False</span>
+    <span class="kw">if</span> <span class="kw">not</span> skip: lines.<span class="fn">append</span>(line)
+
+<span class="kw">with</span> <span class="fn">open</span>(<span class="str">'/tmp/gingr_clean.sql'</span>, <span class="str">'w'</span>) <span class="kw">as</span> f:
+    f.<span class="fn">write</span>(<span class="str">'\n'</span>.<span class="fn">join</span>(lines))
+
+s3.<span class="fn">upload_file</span>(<span class="str">'/tmp/gingr_clean.sql'</span>, <span class="str">'your-bucket'</span>, <span class="str">'gingr_clean.sql'</span>)
+<span class="fn">print</span>(<span class="str">"Clean dump uploaded to S3"</span>)</code></pre>
+  </div>
+
+  <h3>Step 2 — Import clean dump into RDS</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Bash</span><span class="code-label-text">import_to_rds.sh</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># Run on EC2 in the same VPC as your RDS instance</span>
+<span class="cm"># mysql client must be installed: sudo apt install mysql-client</span>
+
+mysql \
+  --host=gingr-clv-db.c9ga6o64i2ho.us-east-2.rds.amazonaws.com \
+  --user=admin \
+  --password \
+  --database=gingr \
+  --max_allowed_packet=512M \
+  &lt; /tmp/gingr_clean.sql
+
+<span class="cm"># Verify row counts</span>
+mysql -h gingr-clv-db... -u admin -p gingr -e "
+  SELECT 'owners'       AS tbl, COUNT(*) FROM owners
+  UNION ALL
+  SELECT 'reservations',       COUNT(*) FROM reservations
+  UNION ALL
+  SELECT 'payments',           COUNT(*) FROM payments;
+"</code></pre>
+  </div>
+  <div class="output-label">Output — Row counts after import</div>
+  <div class="output-block">+---------------+----------+
+| tbl           | COUNT(*) |
++---------------+----------+
+| owners        |    3,950 |
+| reservations  |   43,601 |
+| payments      |   47,109 |
++---------------+----------+</div>
+
+  <hr>
+
+  <!-- ── CLV MODEL ── -->
+  <h2>Historical CLV & RFM Segmentation</h2>
+  <p>The core CLV model computes historical CLV as <code>avg_transaction_value × purchase_frequency × tenure_years</code> per customer, then scores each customer on Recency, Frequency, and Monetary quintiles to assign RFM segments.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Python</span><span class="code-label-text">clv_analysis.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># Column names match the SQL export query output</span>
+cols <span class="op">=</span> [
+    <span class="str">"owner_id"</span>, <span class="str">"first_name"</span>, <span class="str">"last_name"</span>, <span class="str">"zip"</span>, <span class="str">"acquisition_source"</span>,
+    <span class="str">"customer_created_date"</span>, <span class="str">"last_transaction_date"</span>, <span class="str">"days_since_last_purchase"</span>,
+    <span class="str">"total_transactions"</span>, <span class="str">"unique_visit_days"</span>, <span class="str">"total_revenue"</span>,
+    <span class="str">"avg_transaction_value"</span>, <span class="str">"max_transaction_value"</span>, <span class="str">"first_transaction_date"</span>,
+    <span class="str">"tenure_days"</span>, <span class="str">"num_pets"</span>, <span class="str">"total_reservations"</span>,
+    <span class="str">"first_reservation_date"</span>, <span class="str">"last_reservation_date"</span>
+]
+
+df <span class="op">=</span> pd.<span class="fn">read_csv</span>(<span class="str">"customer_base.csv"</span>, header<span class="op">=</span><span class="kw">None</span>, names<span class="op">=</span>cols)
+
+<span class="cm"># Parse dates and numerics</span>
+date_cols <span class="op">=</span> [<span class="str">"customer_created_date"</span>, <span class="str">"last_transaction_date"</span>,
+             <span class="str">"first_transaction_date"</span>, <span class="str">"first_reservation_date"</span>, <span class="str">"last_reservation_date"</span>]
+<span class="kw">for</span> col <span class="kw">in</span> date_cols:
+    df[col] <span class="op">=</span> pd.<span class="fn">to_datetime</span>(df[col], errors<span class="op">=</span><span class="str">"coerce"</span>)
+
+<span class="kw">for</span> col <span class="kw">in</span> [<span class="str">"total_revenue"</span>, <span class="str">"avg_transaction_value"</span>, <span class="str">"tenure_days"</span>, <span class="str">"days_since_last_purchase"</span>]:
+    df[col] <span class="op">=</span> pd.<span class="fn">to_numeric</span>(df[col], errors<span class="op">=</span><span class="str">"coerce"</span>)
+
+<span class="cm"># ── Historical CLV ───────────────────────────────────────────</span>
+df[<span class="str">"tenure_years"</span>]       <span class="op">=</span> (df[<span class="str">"tenure_days"</span>] <span class="op">/</span> <span class="num">365</span>).<span class="fn">clip</span>(lower<span class="op">=</span><span class="num">0.083</span>)
+df[<span class="str">"purchase_frequency"</span>] <span class="op">=</span> df[<span class="str">"total_transactions"</span>] <span class="op">/</span> df[<span class="str">"tenure_years"</span>]
+df[<span class="str">"historical_clv"</span>]    <span class="op">=</span> (df[<span class="str">"avg_transaction_value"</span>]
+                           <span class="op">*</span> df[<span class="str">"purchase_frequency"</span>]
+                           <span class="op">*</span> df[<span class="str">"tenure_years"</span>])
+
+<span class="cm"># ── RFM Scoring (quintiles, 1–5) ─────────────────────────────</span>
+<span class="cm"># Recency: lower days_since = better → reverse label order</span>
+df[<span class="str">"R_score"</span>] <span class="op">=</span> pd.<span class="fn">qcut</span>(df[<span class="str">"days_since_last_purchase"</span>], q<span class="op">=</span><span class="num">5</span>,
+                        labels<span class="op">=</span>[<span class="num">5</span>,<span class="num">4</span>,<span class="num">3</span>,<span class="num">2</span>,<span class="num">1</span>]).<span class="fn">astype</span>(<span class="fn">int</span>)
+df[<span class="str">"F_score"</span>] <span class="op">=</span> pd.<span class="fn">qcut</span>(df[<span class="str">"total_transactions"</span>].<span class="fn">rank</span>(method<span class="op">=</span><span class="str">"first"</span>),
+                        q<span class="op">=</span><span class="num">5</span>, labels<span class="op">=</span>[<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>]).<span class="fn">astype</span>(<span class="fn">int</span>)
+df[<span class="str">"M_score"</span>] <span class="op">=</span> pd.<span class="fn">qcut</span>(df[<span class="str">"total_revenue"</span>].<span class="fn">rank</span>(method<span class="op">=</span><span class="str">"first"</span>),
+                        q<span class="op">=</span><span class="num">5</span>, labels<span class="op">=</span>[<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>]).<span class="fn">astype</span>(<span class="fn">int</span>)
+df[<span class="str">"RFM_score"</span>] <span class="op">=</span> df[<span class="str">"R_score"</span>] <span class="op">+</span> df[<span class="str">"F_score"</span>] <span class="op">+</span> df[<span class="str">"M_score"</span>]
+
+<span class="kw">def</span> <span class="fn">rfm_segment</span>(score):
+    <span class="kw">if</span>   score <span class="op">&gt;=</span> <span class="num">13</span>: <span class="kw">return</span> <span class="str">"Champion"</span>
+    <span class="kw">elif</span> score <span class="op">&gt;=</span> <span class="num">10</span>: <span class="kw">return</span> <span class="str">"Loyal"</span>
+    <span class="kw">elif</span> score <span class="op">&gt;=</span>  <span class="num">7</span>: <span class="kw">return</span> <span class="str">"Needs Attention"</span>
+    <span class="kw">elif</span> score <span class="op">&gt;=</span>  <span class="num">4</span>: <span class="kw">return</span> <span class="str">"At Risk"</span>
+    <span class="kw">else</span>:              <span class="kw">return</span> <span class="str">"Lost"</span>
+
+df[<span class="str">"segment"</span>] <span class="op">=</span> df[<span class="str">"RFM_score"</span>].<span class="fn">apply</span>(rfm_segment)
+
+<span class="cm"># ── Segment Summary ──────────────────────────────────────────</span>
+seg <span class="op">=</span> df.<span class="fn">groupby</span>(<span class="str">"segment"</span>).<span class="fn">agg</span>(
+    customers<span class="op">=</span>(<span class="str">"owner_id"</span>, <span class="str">"count"</span>),
+    revenue<span class="op">=</span>(<span class="str">"total_revenue"</span>, <span class="str">"sum"</span>),
+    avg_clv<span class="op">=</span>(<span class="str">"historical_clv"</span>, <span class="str">"mean"</span>),
+).<span class="fn">sort_values</span>(<span class="str">"revenue"</span>, ascending<span class="op">=</span><span class="kw">False</span>)
+seg[<span class="str">"rev_pct"</span>] <span class="op">=</span> seg[<span class="str">"revenue"</span>] <span class="op">/</span> seg[<span class="str">"revenue"</span>].<span class="fn">sum</span>() <span class="op">*</span> <span class="num">100</span>
+<span class="fn">print</span>(seg.<span class="fn">round</span>(<span class="num">1</span>))
+
+df.<span class="fn">to_csv</span>(<span class="str">"customer_base_scored.csv"</span>, index<span class="op">=</span><span class="kw">False</span>)</code></pre>
+  </div>
+  <div class="output-label">Output — Segment Summary</div>
+  <div class="output-block">                 customers    revenue  avg_clv  rev_pct
+segment
+Champion               587  2909497.0   4956.6     65.7
+Loyal                  645   972751.0   1508.1     22.0
+Needs Attention        735   443420.0    603.3     10.0
+At Risk                637   103308.0    162.2      2.3
+Lost                   153       86.0      0.6      0.0</div>
+
+  <hr>
+
+  <!-- ── COHORT ── -->
+  <h2>Cohort Retention Analysis</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Python</span><span class="code-label-text">cohort_retention.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> seaborn <span class="kw">as</span> sns
+<span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+
+coh <span class="op">=</span> pd.<span class="fn">read_csv</span>(<span class="str">"cohort_monthly.csv"</span>, header<span class="op">=</span><span class="kw">None</span>,
+                  names<span class="op">=</span>[<span class="str">"owner_id"</span>, <span class="str">"cohort_month"</span>, <span class="str">"revenue"</span>, <span class="str">"months_since_first"</span>])
+
+<span class="cm"># Count distinct active customers per cohort × month</span>
+cohort_counts <span class="op">=</span> (coh.<span class="fn">groupby</span>([<span class="str">"cohort_month"</span>, <span class="str">"months_since_first"</span>])[<span class="str">"owner_id"</span>]
+                    .<span class="fn">nunique</span>()
+                    .<span class="fn">reset_index</span>(name<span class="op">=</span><span class="str">"active_customers"</span>))
+
+<span class="cm"># Pivot to matrix: rows = cohort month, cols = months since first</span>
+pivot <span class="op">=</span> cohort_counts.<span class="fn">pivot</span>(index<span class="op">=</span><span class="str">"cohort_month"</span>,
+                              columns<span class="op">=</span><span class="str">"months_since_first"</span>,
+                              values<span class="op">=</span><span class="str">"active_customers"</span>)
+
+<span class="cm"># Retention % = active / month-0 cohort size</span>
+retention <span class="op">=</span> pivot.<span class="fn">div</span>(pivot[<span class="num">0</span>], axis<span class="op">=</span><span class="num">0</span>) <span class="op">*</span> <span class="num">100</span>
+
+<span class="cm"># Heatmap</span>
+fig, ax <span class="op">=</span> plt.<span class="fn">subplots</span>(figsize<span class="op">=</span>(<span class="num">14</span>, <span class="num">8</span>))
+sns.<span class="fn">heatmap</span>(retention, annot<span class="op">=</span><span class="kw">True</span>, fmt<span class="op">=</span><span class="str">".0f"</span>,
+            cmap<span class="op">=</span><span class="str">"YlOrRd_r"</span>, linewidths<span class="op">=</span><span class="num">0.5</span>, ax<span class="op">=</span>ax,
+            cbar_kws<span class="op">=</span>{<span class="str">"label"</span>: <span class="str">"Retention %"</span>})
+ax.<span class="fn">set_title</span>(<span class="str">"Cohort Retention Heatmap — % Still Active by Month"</span>)
+ax.<span class="fn">set_xlabel</span>(<span class="str">"Months Since First Purchase"</span>)
+ax.<span class="fn">set_ylabel</span>(<span class="str">"Acquisition Cohort"</span>)
+plt.<span class="fn">tight_layout</span>()
+plt.<span class="fn">savefig</span>(<span class="str">"chart8_cohort_retention.png"</span>, dpi<span class="op">=</span><span class="num">150</span>)
+
+<span class="cm"># Average retention curve across all cohorts</span>
+avg_retention <span class="op">=</span> retention.<span class="fn">mean</span>(axis<span class="op">=</span><span class="num">0</span>)
+<span class="fn">print</span>(avg_retention.<span class="fn">round</span>(<span class="num">1</span>))</code></pre>
+  </div>
+  <div class="output-label">Output — Average retention curve</div>
+  <div class="output-block">months_since_first
+0     100.0
+1      42.0
+2      33.0
+3      28.0
+4      28.0
+5      25.0
+6      24.0
+7      22.0
+8      22.0
+9      21.0
+10     20.0
+11     22.0
+12     23.0</div>
+
+  <hr>
+
+  <!-- ── BG/NBD ── -->
+  <h2>BG/NBD Predictive CLV Model</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Python</span><span class="code-label-text">bgnbd_model.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="cm"># pip install lifetimes</span>
+<span class="kw">from</span> lifetimes <span class="kw">import</span> BetaGeoFitter, GammaGammaFitter
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="cm"># BG/NBD input: frequency, recency, T (age of customer in days)</span>
+<span class="cm"># Customers must have made at least 2 transactions</span>
+inp <span class="op">=</span> pd.<span class="fn">read_csv</span>(<span class="str">"bgnbd_input.csv"</span>)
+
+<span class="cm"># Fit BG/NBD model — estimates purchase process + dropout process</span>
+bgf <span class="op">=</span> <span class="fn">BetaGeoFitter</span>(penalizer_coef<span class="op">=</span><span class="num">0.001</span>)
+bgf.<span class="fn">fit</span>(inp[<span class="str">"frequency"</span>], inp[<span class="str">"recency"</span>], inp[<span class="str">"T"</span>])
+
+<span class="cm"># Predict probability customer is still alive</span>
+inp[<span class="str">"prob_alive"</span>] <span class="op">=</span> bgf.<span class="fn">conditional_probability_alive</span>(
+    inp[<span class="str">"frequency"</span>], inp[<span class="str">"recency"</span>], inp[<span class="str">"T"</span>])
+
+<span class="cm"># Predict expected purchases in next 365 days</span>
+inp[<span class="str">"predicted_purchases_1yr"</span>] <span class="op">=</span> bgf.<span class="fn">conditional_expected_number_of_purchases_up_to_time</span>(
+    <span class="num">365</span>, inp[<span class="str">"frequency"</span>], inp[<span class="str">"recency"</span>], inp[<span class="str">"T"</span>])
+
+<span class="cm"># Fit Gamma-Gamma model for spend prediction</span>
+<span class="cm"># (only customers with >1 repeat purchase)</span>
+gg_df <span class="op">=</span> inp[inp[<span class="str">"frequency"</span>] <span class="op">&gt;</span> <span class="num">0</span>]
+ggf <span class="op">=</span> <span class="fn">GammaGammaFitter</span>(penalizer_coef<span class="op">=</span><span class="num">0.001</span>)
+ggf.<span class="fn">fit</span>(gg_df[<span class="str">"frequency"</span>], gg_df[<span class="str">"monetary_value"</span>])
+
+<span class="cm"># Predicted CLV over 1 year</span>
+inp[<span class="str">"predicted_clv_1yr"</span>] <span class="op">=</span> ggf.<span class="fn">customer_lifetime_value</span>(
+    bgf, inp[<span class="str">"frequency"</span>], inp[<span class="str">"recency"</span>], inp[<span class="str">"T"</span>],
+    inp[<span class="str">"monetary_value"</span>],
+    time<span class="op">=</span><span class="num">12</span>, discount_rate<span class="op">=</span><span class="num">0.01</span>)
+
+<span class="fn">print</span>(inp.<span class="fn">nlargest</span>(<span class="num">10</span>, <span class="str">"predicted_clv_1yr"</span>)[[
+    <span class="str">"owner_id"</span>, <span class="str">"frequency"</span>, <span class="str">"prob_alive"</span>,
+    <span class="str">"predicted_purchases_1yr"</span>, <span class="str">"predicted_clv_1yr"</span>]])
+
+inp.<span class="fn">to_csv</span>(<span class="str">"bgnbd_scored.csv"</span>, index<span class="op">=</span><span class="kw">False</span>)</code></pre>
+  </div>
+
+  <hr>
+
+  <!-- ── PRICE ── -->
+  <h2>Price Sensitivity Analysis</h2>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Python</span><span class="code-label-text">price_analysis.py — before/after calculation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <pre><code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+cols <span class="op">=</span> [<span class="str">"month"</span>, <span class="str">"room_type"</span>, <span class="str">"reservations"</span>,
+        <span class="str">"avg_nightly_rate"</span>, <span class="str">"avg_nights"</span>, <span class="str">"avg_total_per_stay"</span>]
+df <span class="op">=</span> pd.<span class="fn">read_csv</span>(<span class="str">"price_sensitivity_v2.csv"</span>, header<span class="op">=</span><span class="kw">None</span>, names<span class="op">=</span>cols)
+df[<span class="str">"month"</span>] <span class="op">=</span> pd.<span class="fn">to_datetime</span>(df[<span class="str">"month"</span>] <span class="op">+</span> <span class="str">"-01"</span>)
+
+rooms <span class="op">=</span> {
+    <span class="str">"Boarding | Executive Room (All Inclusive)"</span>:    <span class="str">"Executive Room"</span>,
+    <span class="str">"Boarding | Luxury Suite (All Inclusive)"</span>:      <span class="str">"Luxury Suite"</span>,
+    <span class="str">"Boarding | Double Compartment (All Inclusive)"</span>: <span class="str">"Double Compartment"</span>,
+    <span class="str">"Boarding | Single Compartment (All Inclusive)"</span>: <span class="str">"Single Compartment"</span>,
+}
+
+<span class="cm"># Before: 3 months before Feb 2025 / After: 3 months from Mar 2025</span>
+<span class="kw">for</span> room, short <span class="kw">in</span> rooms.<span class="fn">items</span>():
+    sub <span class="op">=</span> df[df[<span class="str">"room_type"</span>] <span class="op">==</span> room].<span class="fn">sort_values</span>(<span class="str">"month"</span>)
+    pre  <span class="op">=</span> sub[sub[<span class="str">"month"</span>] <span class="op">&lt;</span> <span class="str">"2025-02-01"</span>].<span class="fn">tail</span>(<span class="num">3</span>)
+    post <span class="op">=</span> sub[(sub[<span class="str">"month"</span>] <span class="op">&gt;=</span> <span class="str">"2025-03-01"</span>) <span class="op">&amp;</span>
+               (sub[<span class="str">"month"</span>] <span class="op">&lt;</span> <span class="str">"2026-02-01"</span>)].<span class="fn">head</span>(<span class="num">3</span>)
+
+    rate_chg <span class="op">=</span> (post[<span class="str">"avg_nightly_rate"</span>].<span class="fn">mean</span>() <span class="op">-</span>
+                pre[<span class="str">"avg_nightly_rate"</span>].<span class="fn">mean</span>()) <span class="op">/</span> pre[<span class="str">"avg_nightly_rate"</span>].<span class="fn">mean</span>() <span class="op">*</span> <span class="num">100</span>
+    vol_chg  <span class="op">=</span> (post[<span class="str">"reservations"</span>].<span class="fn">mean</span>() <span class="op">-</span>
+                pre[<span class="str">"reservations"</span>].<span class="fn">mean</span>()) <span class="op">/</span> pre[<span class="str">"reservations"</span>].<span class="fn">mean</span>() <span class="op">*</span> <span class="num">100</span>
+    elasticity <span class="op">=</span> vol_chg <span class="op">/</span> rate_chg
+
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{short}: rate {rate_chg:+.1f}%  vol {vol_chg:+.1f}%  elasticity {elasticity:.2f}"</span>)</code></pre>
+  </div>
+  <div class="output-label">Output — Feb 2025 price change impact</div>
+  <div class="output-block">Executive Room:     rate +11.5%  vol +16.0%  elasticity 1.39
+Luxury Suite:       rate +12.1%  vol +10.7%  elasticity 0.88
+Double Compartment: rate +10.2%  vol +43.5%  elasticity 4.27
+Single Compartment: rate  +6.9%  vol  +5.6%  elasticity 0.81
+
+Price-inelastic demand confirmed — volume did not decline after rate increases.</div>
+
+  <a href="k9-clv.html" class="back-link">← back to analysis</a>
+</div>
+<script>
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+</body>
+</html>
