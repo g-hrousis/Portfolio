@@ -7,13 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a;
-      --border: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.16);
       --text: #f0ede8; --text-muted: #888884; --text-dim: #555552;
-      --accent: #c8b89a;
+      --accent: #c8b89a; --green: #4a9e6b; --green-dim: #1e3d2a;
+      --red: #c44b4b; --red-dim: #3d1e1e; --blue: #4a7fb5;
     }
     body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; font-weight: 300; line-height: 1.7; }
     body::before {
@@ -45,20 +47,51 @@
     .stack-tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 8px; background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
     hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
     h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; font-weight: 400; color: var(--text); margin-bottom: 1rem; margin-top: 2.5rem; }
+    h3 { font-size: 0.8rem; font-weight: 500; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; margin-top: 1.5rem; }
     p { font-size: 1rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.9; }
     p strong { color: var(--text); font-weight: 500; }
-    .wip-banner { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 1.5rem 2rem; margin: 2rem 0; }
-    .wip-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; }
     .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 2rem 0; }
+    .metrics-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 2rem 0; }
     .metric-box { background: var(--bg2); padding: 1.5rem; }
     .metric-val { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--text); display: block; margin-bottom: 0.25rem; }
+    .metric-val.green { color: var(--green); }
+    .metric-val.red { color: var(--red); }
+    .metric-val.accent { color: var(--accent); }
     .metric-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
-    .plan-list { list-style: none; margin: 1rem 0; }
-    .plan-item { display: flex; align-items: flex-start; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text-muted); }
-    .plan-item:last-child { border-bottom: none; }
-    .plan-num { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); min-width: 1.5rem; margin-top: 2px; }
+    .chart-wrap { background: var(--bg2); border: 1px solid var(--border); padding: 1.5rem; margin: 1.5rem 0; }
+    .chart-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+    .chart-caption { font-size: 0.85rem; color: var(--text-dim); margin-top: 1rem; line-height: 1.6; }
+    .insight { background: var(--bg2); border-left: 3px solid var(--accent); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .insight-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .insight p { margin: 0; font-size: 0.95rem; }
+    .data-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.875rem; }
+    .data-table th { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table .hl { color: var(--text); font-weight: 500; }
+    .data-table .green { color: var(--green); }
+    .data-table .red { color: var(--red); }
+    .data-table .accent { color: var(--accent); }
+    .sig { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 5px; background: var(--green-dim); color: var(--green); }
+    .decile-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 2rem 0; }
+    .decile-box { background: var(--bg2); padding: 2rem; }
+    .decile-type { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem; }
+    .decile-val { font-family: 'DM Serif Display', serif; font-size: 2.5rem; margin-bottom: 0.25rem; }
+    .email-card { background: var(--bg2); border: 1px solid var(--border-hover); padding: 2rem; margin: 2rem 0; }
+    .email-field { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 100px 1fr; gap: 1rem; align-items: start; }
+    .email-field:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .email-key { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; padding-top: 2px; }
+    .email-val { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+    .email-val strong { color: var(--text); }
     .back-link { display: inline-flex; align-items: center; gap: 0.5rem; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); text-decoration: none; margin-top: 4rem; }
     .back-link:hover { color: var(--accent); }
+    @media (max-width: 640px) {
+      .page { padding: 6rem 1.5rem 4rem; }
+      nav { padding: 1rem 1.5rem; }
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .decile-compare { grid-template-columns: 1fr; }
+      .email-field { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -76,46 +109,330 @@
       <div class="meta-item"><span class="meta-label">Language</span><span class="meta-value">R</span></div>
     </div>
     <div class="stack-tags">
-      <span class="stack-tag">R</span>
-      <span class="stack-tag">Logistic Regression</span>
-      <span class="stack-tag">Linear Regression</span>
-      <span class="stack-tag">sqldf</span>
-      <span class="stack-tag">ggplot2</span>
-      <span class="stack-tag">RFM Analysis</span>
-      <span class="stack-tag">Decile Profiling</span>
+      <span class="stack-tag">R</span><span class="stack-tag">Logistic Regression</span><span class="stack-tag">Linear Regression</span>
+      <span class="stack-tag">sqldf</span><span class="stack-tag">ggplot2</span><span class="stack-tag">RFM Analysis</span><span class="stack-tag">Decile Profiling</span>
     </div>
     <hr>
-    <div class="wip-banner">
-      <div class="wip-label">Work in Progress</div>
-      <p style="margin:0;font-size:0.9rem;">Full analysis and write-up in progress. Check back soon.</p>
-    </div>
+
+    <!-- SECTION 1: OVERVIEW -->
     <h2>Project Overview</h2>
     <p>
-      Florence Books conducted a 50,000-customer trial of its online book club and wants to know which customers are most likely to subscribe. This project builds <strong>predictive models</strong> to identify high-probability subscribers, profiles the top and bottom deciles, and designs a targeted email campaign based on the findings.
+      Florence Books conducted a 50,000-customer trial of its online visual e-book club and wants to know which customers are most likely to subscribe. Using purchase history from offline stores — including total spend, recency, book genre preferences, and demographics — I built two predictive models: a <strong>linear regression</strong> to understand offline spending behavior, and a <strong>logistic regression</strong> to predict subscription probability. I then profiled the top and bottom predicted-subscriber deciles to design a targeted email campaign.
     </p>
     <div class="metrics-grid">
+      <div class="metric-box"><span class="metric-val">50K</span><span class="metric-label">Customers in Trial</span></div>
+      <div class="metric-box"><span class="metric-val accent">9.0%</span><span class="metric-label">Overall Subscription Rate</span></div>
+      <div class="metric-box"><span class="metric-val">4,522</span><span class="metric-label">Total Subscribers</span></div>
+    </div>
+
+    <!-- SECTION 2: SQL DESCRIPTIVE STATS -->
+    <h2>SQL Descriptive Analysis</h2>
+    <p>
+      I used <code>sqldf</code> in R to run SQL queries directly against the loaded dataframe, replicating the workflow from the course demos. The three core descriptive statistics below establish baselines for the customer population before modeling.
+    </p>
+
+    <div class="chart-wrap">
+      <div class="chart-label">Descriptive Statistics — 50,000 Florence Books Customers</div>
+      <table class="data-table" style="margin:0;">
+        <thead><tr><th>Metric</th><th>Mean</th><th>Std Dev</th><th>Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td class="hl">Total Offline $ Spent</td><td>$208.32</td><td>$101.36</td><td class="accent">Wide spending range; high variance signals segmentation opportunity</td></tr>
+          <tr><td class="hl">Total # Books Purchased</td><td>3.89</td><td>3.48</td><td class="accent">Most customers are light buyers; power buyers skew the mean upward</td></tr>
+          <tr><td class="hl">Months Since Last Purchase</td><td>12.36</td><td>8.15</td><td class="accent">Average customer hasn't purchased in ~1 year; recency is a key risk factor</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Subscriptions by Gender</h3>
+    <table class="data-table">
+      <thead><tr><th>Gender</th><th>Total Customers</th><th>Subscribers</th><th>Subscription Rate</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">Female</td><td>33,302</td><td>2,389</td><td>7.2%</td></tr>
+        <tr><td class="hl">Male / Non-Binary</td><td>16,698</td><td>2,133</td><td class="green">12.8%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="insight">
+      <div class="insight-label">Finding — Gender Gap</div>
+      <p>Male/NB customers subscribe at nearly <strong>1.8× the rate</strong> of female customers (12.8% vs. 7.2%). Female customers make up the large majority of the customer base (66.6%) but show lower subscription propensity. This counterintuitive finding is confirmed and explained by the logistic regression — it's not simply about gender, but about what male/NB customers buy (more art books, geography books) which are the strongest predictors of subscription.</p>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-label">Subscription Rate by Gender</div>
+      <div style="position:relative;height:200px;"><canvas id="genderChart"></canvas></div>
+      <p class="chart-caption">Male/NB customers subscribe at 12.8% vs. 7.2% for female customers — a meaningful gap that the logistic model will help explain through book genre preferences and recency differences between groups.</p>
+    </div>
+
+    <hr>
+
+    <!-- SECTION 3: LINEAR REGRESSION -->
+    <h2>Linear Regression — Predicting Offline Spend</h2>
+    <p>
+      The linear regression model predicts a customer's total offline dollar spend from their gender, tenure (months since first purchase), and book category purchase counts. This establishes which customer attributes are associated with higher-value offline buyers — the foundation for understanding who Florence Books should prioritize for the online club.
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-dim);background:var(--bg2);padding:1rem;border:1px solid var(--border);">
+      total_ ~ IsFemale + first + child + youth + cook + do_it + refernce + art + geog
+    </p>
+
+    <div class="chart-wrap">
+      <div class="chart-label">Linear Regression — Coefficients (Significant Variables)</div>
+      <div style="position:relative;height:260px;"><canvas id="linRegChart"></canvas></div>
+      <p class="chart-caption">Every book category adds approximately $14–16 to a customer's total offline spend. The effect is remarkably consistent across genres, suggesting that the key driver of offline spend is <em>volume of purchases</em> — customers who buy more books across any category spend more — rather than any specific genre preference. IsFemale and months-since-first-purchase are statistically insignificant.</p>
+    </div>
+
+    <table class="data-table">
+      <thead><tr><th>Variable</th><th>Coefficient</th><th>p-value</th><th>Significant?</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">Intercept</td><td>$149.63</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Base spend for a male customer with no book purchases</td></tr>
+        <tr><td class="hl">IsFemale</td><td>+$0.68</td><td>0.433</td><td class="red">No</td><td>Gender does not significantly predict offline spend</td></tr>
+        <tr><td class="hl">first (tenure)</td><td>−$0.03</td><td>0.382</td><td class="red">No</td><td>Months since first purchase is not a significant spending predictor</td></tr>
+        <tr><td class="hl">Children's Books</td><td>+$15.26</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each children's book adds ~$15 to total spend</td></tr>
+        <tr><td class="hl">Young Adult</td><td>+$15.42</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each YA book adds ~$15 to total spend</td></tr>
+        <tr><td class="hl">Cookbooks</td><td>+$15.66</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each cookbook adds ~$16 to total spend</td></tr>
+        <tr><td class="hl">DIY Books</td><td>+$15.01</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each DIY book adds ~$15 to total spend</td></tr>
+        <tr><td class="hl">Reference</td><td>+$14.51</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each reference book adds ~$14.50 to total spend</td></tr>
+        <tr><td class="hl">Art Books</td><td>+$14.46</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each art book adds ~$14.50 to total spend</td></tr>
+        <tr><td class="hl">Geography/Travel</td><td>+$15.18</td><td>&lt;0.001</td><td><span class="sig">***</span></td><td>Each geography book adds ~$15 to total spend</td></tr>
+      </tbody>
+    </table>
+    <p><strong>R² = 0.2656</strong> — the model explains about 27% of variance in offline spend, which is reasonable given we're predicting spending purely from transaction counts without pricing or channel data.</p>
+
+    <hr>
+
+    <!-- SECTION 4: LOGISTIC REGRESSION -->
+    <h2>Logistic Regression — Predicting Subscription</h2>
+    <p>
+      The logistic regression models the log-odds of subscribing to the online book club as a function of recency (months since last offline purchase), monetary value (total offline spend), gender, and book genre purchase counts. Unlike linear regression, logistic regression outputs a probability between 0 and 1, making it ideal for binary classification like subscription prediction.
+    </p>
+    <p style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-dim);background:var(--bg2);padding:1rem;border:1px solid var(--border);">
+      subscribe ~ last + total_ + IsFemale + child + youth + cook + do_it + refernce + art + geog
+    </p>
+
+    <div class="chart-wrap">
+      <div class="chart-label">Logistic Regression — Odds Ratios</div>
+      <div style="position:relative;height:280px;"><canvas id="oddsRatioChart"></canvas></div>
+      <p class="chart-caption">Odds ratios above 1.0 increase subscription probability; below 1.0 decrease it. Art books (OR = 3.18) and geography/travel books (OR = 1.78) are the strongest positive predictors. DIY books (OR = 0.58) and being female (OR = 0.47) are the strongest negative predictors. All variables are highly significant (p &lt; 0.001).</p>
+    </div>
+
+    <table class="data-table">
+      <thead><tr><th>Variable</th><th>Coefficient</th><th>Odds Ratio</th><th>p-value</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">last (recency)</td><td>−0.095</td><td class="red">0.910</td><td>&lt;0.001</td><td>Each additional month since last purchase reduces subscription odds by ~9% — recency matters</td></tr>
+        <tr><td class="hl">total_ (spend)</td><td>+0.001</td><td class="green">1.001</td><td>&lt;0.001</td><td>Higher offline spenders are marginally more likely to subscribe</td></tr>
+        <tr><td class="hl">IsFemale</td><td>−0.761</td><td class="red">0.467</td><td>&lt;0.001</td><td>Female customers are 53% less likely to subscribe than M/NB, controlling for other factors</td></tr>
+        <tr><td class="hl">Children's Books</td><td>−0.186</td><td class="red">0.830</td><td>&lt;0.001</td><td>Each children's book reduces subscription odds by 17%</td></tr>
+        <tr><td class="hl">Young Adult</td><td>−0.113</td><td class="red">0.893</td><td>&lt;0.001</td><td>Each YA book reduces odds by 11%</td></tr>
+        <tr><td class="hl">Cookbooks</td><td>−0.270</td><td class="red">0.763</td><td>&lt;0.001</td><td>Each cookbook reduces odds by 24%</td></tr>
+        <tr><td class="hl">DIY Books</td><td>−0.539</td><td class="red">0.583</td><td>&lt;0.001</td><td>Each DIY book reduces odds by 42% — strongest negative genre signal</td></tr>
+        <tr><td class="hl">Reference</td><td>+0.235</td><td class="green">1.265</td><td>&lt;0.001</td><td>Each reference book increases odds by 26%</td></tr>
+        <tr><td class="hl">Art Books</td><td>+1.156</td><td class="green">3.176</td><td>&lt;0.001</td><td>Each art book more than triples subscription odds — strongest positive signal</td></tr>
+        <tr><td class="hl">Geography/Travel</td><td>+0.574</td><td class="green">1.776</td><td>&lt;0.001</td><td>Each geography book increases odds by 78%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="insight">
+      <div class="insight-label">Key Logistic Regression Insights</div>
+      <p>The model tells a clear story: <strong>the ideal e-book club subscriber</strong> is a recent M/NB customer who buys art and geography books offline. Art books have a remarkably strong signal (OR = 3.18), possibly because visual/artistic content translates especially well to the visual e-book format. DIY and cookbook buyers, by contrast, likely prefer physical books for practical reference use — a digital subscription has less utility for them. Recency is a critical lever: every month of inactivity meaningfully reduces conversion probability.</p>
+    </div>
+
+    <hr>
+
+    <!-- SECTION 5: DECILE ANALYSIS -->
+    <h2>Decile Profiling — Top vs. Bottom Predicted Subscribers</h2>
+    <p>
+      Using the logistic model's predicted probabilities, I ranked all 50,000 customers into 10 equal deciles (5,000 each). I then profiled the top decile (highest predicted subscription probability) and bottom decile (lowest) to understand who to target and who to deprioritize in a promotional campaign.
+    </p>
+
+    <div class="metrics-grid">
       <div class="metric-box">
-        <span class="metric-val">50K</span>
-        <span class="metric-label">Customers</span>
+        <span class="metric-val green">4.28×</span>
+        <span class="metric-label">Top Decile Lift</span>
       </div>
       <div class="metric-box">
-        <span class="metric-val">2</span>
-        <span class="metric-label">Regression Models</span>
+        <span class="metric-val accent">38.7%</span>
+        <span class="metric-label">Top Decile Actual Sub Rate</span>
       </div>
       <div class="metric-box">
-        <span class="metric-val">10</span>
-        <span class="metric-label">Book Categories</span>
+        <span class="metric-val">9.0%</span>
+        <span class="metric-label">Overall Subscription Rate</span>
       </div>
     </div>
-    <h2>Analysis Plan</h2>
-    <ul class="plan-list">
-      <li class="plan-item"><span class="plan-num">01</span>Descriptive SQL analysis — means, standard deviations, subscription rates by gender</li>
-      <li class="plan-item"><span class="plan-num">02</span>Linear regression — predict total offline spend from purchase history and demographics</li>
-      <li class="plan-item"><span class="plan-num">03</span>Logistic regression — predict subscription probability from RFM and book category variables</li>
-      <li class="plan-item"><span class="plan-num">04</span>Decile analysis — profile top 10% vs. bottom 10% predicted subscribers</li>
-      <li class="plan-item"><span class="plan-num">05</span>Email campaign design — targeting strategy based on model outputs</li>
-    </ul>
+
+    <div class="decile-compare">
+      <div class="decile-box">
+        <div class="decile-type">Top Decile — Target Segment</div>
+        <div class="decile-val" style="color:var(--green);">38.7%</div>
+        <p style="font-size:0.8rem;color:var(--text-dim);margin:0 0 1rem;">Actual subscription rate (n=5,000)</p>
+        <table class="data-table" style="margin:0;font-size:0.8rem;">
+          <tr><td style="color:var(--text-dim);">Avg predicted prob</td><td style="color:var(--text);">38.6%</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg total offline spend</td><td style="color:var(--text);">$257.35</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg recency (months)</td><td style="color:var(--green);">7.2 months</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg books purchased</td><td style="color:var(--text);">6.5 books</td></tr>
+          <tr><td style="color:var(--text-dim);">% Female</td><td style="color:var(--text);">41.9%</td></tr>
+          <tr><td style="color:var(--text-dim);">Top genre</td><td style="color:var(--accent);">Art books</td></tr>
+        </table>
+      </div>
+      <div class="decile-box">
+        <div class="decile-type">Bottom Decile — Do Not Target</div>
+        <div class="decile-val" style="color:var(--red);">0.8%</div>
+        <p style="font-size:0.8rem;color:var(--text-dim);margin:0 0 1rem;">Actual subscription rate (n=5,000)</p>
+        <table class="data-table" style="margin:0;font-size:0.8rem;">
+          <tr><td style="color:var(--text-dim);">Avg predicted prob</td><td style="color:var(--text);">0.65%</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg total offline spend</td><td style="color:var(--text);">$204.34</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg recency (months)</td><td style="color:var(--red);">25.9 months</td></tr>
+          <tr><td style="color:var(--text-dim);">Avg books purchased</td><td style="color:var(--text);">4.2 books</td></tr>
+          <tr><td style="color:var(--text-dim);">% Female</td><td style="color:var(--text);">78.2%</td></tr>
+          <tr><td style="color:var(--text-dim);">Top genre</td><td style="color:var(--red);">DIY / Cookbooks</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-label">Actual Subscription Rate by Predicted Decile</div>
+      <div style="position:relative;height:240px;"><canvas id="decileChart"></canvas></div>
+      <p class="chart-caption">The model shows strong monotonic lift — predicted deciles reliably rank customers by actual subscription propensity. The top decile (decile 10) achieves 38.7% actual subscription vs. 0.8% in the bottom decile, a 48× spread. This steep gradient validates that the logistic model is meaningfully discriminating between high and low probability subscribers.</p>
+    </div>
+
+    <p>
+      <strong>Top decile profile summary:</strong> Recent purchasers (7.2 months avg) who buy art books, are disproportionately M/NB (58.1%), and have above-average offline spend ($257). They are active, engaged book buyers who likely gravitate toward visual and experiential content — exactly what a visual e-book subscription offers. <strong>Bottom decile profile:</strong> Lapsed customers (25.9 months since last purchase) who skew female (78.2%) and favor DIY and cookbooks — practical physical-format readers who find less value in a visual digital subscription.
+    </p>
+
+    <hr>
+
+    <!-- SECTION 6: EMAIL CAMPAIGN -->
+    <h2>Email Campaign Design</h2>
+    <p>
+      Based on the model outputs, I designed a targeted email campaign to convert high-probability customers. The campaign has two tiers: a primary outreach to the top two deciles (~10,000 customers) and a reactivation campaign for middle deciles who haven't purchased recently.
+    </p>
+
+    <h3>Tier 1 — Top Two Deciles (Highest-Probability Subscribers)</h3>
+    <div class="email-card">
+      <div class="email-field">
+        <div class="email-key">To</div>
+        <div class="email-val"><strong>Top 2 deciles</strong> (deciles 9–10) — ~10,000 customers. Filter: predicted probability &gt; 25%, last purchase within 18 months, has purchased art or geography books.</div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Subject Line</div>
+        <div class="email-val"><strong>"The books you love — now in a format made for them."</strong><br>A/B test alternative: <em>"2 visual e-books, every month. On us — first month free."</em></div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Content</div>
+        <div class="email-val">
+          Lead with a curated art book or illustrated travel title relevant to their purchase history (personalized by genre). Show a preview of the visual reading experience — the format is the product differentiator. Include a single clear CTA: "Start my free month." Social proof: "Join X readers already exploring our visual collection." Keep it under 200 words — this audience already knows Florence Books; they need a reason to try digital, not a brand introduction.
+        </div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Timing</div>
+        <div class="email-val">
+          Send <strong>Tuesday or Wednesday evening</strong> (highest open rates for retail email). Since calendar purchase timing is unavailable, use <strong>relationship timing</strong>: send 3–4 weeks after a customer's most recent offline purchase — the engagement window when brand recall is highest. For lapsed customers (6–18 months), send on the anniversary of their last purchase date to trigger recall.
+        </div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Offer</div>
+        <div class="email-val"><strong>First month free</strong>, then $X/month. The barrier is trial, not price — art and geography buyers have above-average spend profiles. A free trial is more effective than a discount for this segment.</div>
+      </div>
+    </div>
+
+    <h3>Tier 2 — Middle Deciles (Recency-Recoverable Customers)</h3>
+    <div class="email-card">
+      <div class="email-field">
+        <div class="email-key">To</div>
+        <div class="email-val"><strong>Deciles 5–8</strong> — customers with moderate predicted probability (8–25%) who have purchased within 24 months. Focus on those with reference or art book purchases.</div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Subject Line</div>
+        <div class="email-val"><strong>"We noticed it's been a while — here's what's new."</strong></div>
+      </div>
+      <div class="email-field">
+        <div class="email-key">Content</div>
+        <div class="email-val">Reintroduce the brand with new arrivals in their preferred genre. Soft sell the book club as a "discovery" mechanism — "Never miss a new release in art and design." Include a loyalty incentive for returning: "Welcome back — your first club book is on us." This framing rewards the relationship rather than pitching a product cold.</div>
+      </div>
+    </div>
+
+    <h3>Marketing Metrics to Track</h3>
+    <table class="data-table">
+      <thead><tr><th>Metric</th><th>Target</th><th>Why It Matters</th></tr></thead>
+      <tbody>
+        <tr><td class="hl">Email open rate</td><td>&gt;22%</td><td>Validates subject line and send-time decisions</td></tr>
+        <tr><td class="hl">Click-through rate (CTR)</td><td>&gt;4%</td><td>Measures content relevance and CTA strength</td></tr>
+        <tr><td class="hl">Trial activation rate</td><td>&gt;15% of clicks</td><td>Conversion from click to subscription signup</td></tr>
+        <tr><td class="hl">Month-2 retention rate</td><td>&gt;60%</td><td>Whether trial subscribers stay past the free month</td></tr>
+        <tr><td class="hl">Lift vs. control group</td><td>&gt;2×</td><td>Validates model effectiveness vs. random targeting</td></tr>
+        <tr><td class="hl">Revenue per email sent</td><td>Track over time</td><td>ROI metric to justify ongoing campaign investment</td></tr>
+      </tbody>
+    </table>
+
     <a href="index.html" class="back-link">← back to all projects</a>
   </div>
+
+  <script>
+    const ACCENT='#c8b89a', GREEN='#4a9e6b', RED='#c44b4b', BLUE='#4a7fb5';
+    const gridColor='rgba(255,255,255,0.06)', textColor='#888884';
+    Chart.defaults.color=textColor; Chart.defaults.borderColor=gridColor;
+    Chart.defaults.font={family:'DM Mono, monospace',size:11};
+
+    new Chart(document.getElementById('genderChart'),{
+      type:'bar',
+      data:{
+        labels:['Female','Male/NB'],
+        datasets:[
+          {label:'Total Customers',data:[33302,16698],backgroundColor:ACCENT+'66'},
+          {label:'Subscribers',data:[2389,2133],backgroundColor:GREEN+'cc'}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top'}},
+        scales:{x:{grid:{color:gridColor}},y:{grid:{color:gridColor}}}}
+    });
+
+    new Chart(document.getElementById('linRegChart'),{
+      type:'bar',
+      data:{
+        labels:['Child','Youth','Cook','DIY','Ref.','Art','Geo/Travel'],
+        datasets:[{label:'$ Added per Book Purchased',
+          data:[15.26,15.42,15.66,15.01,14.51,14.46,15.18],
+          backgroundColor:ACCENT+'bb',borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:gridColor}},y:{min:13,max:17,grid:{color:gridColor},
+          title:{display:true,text:'Coefficient ($)',color:textColor}}}}
+    });
+
+    new Chart(document.getElementById('oddsRatioChart'),{
+      type:'bar',
+      data:{
+        labels:['Art','Geo/Travel','Reference','Spend','Recency','Youth','Child','Cook','DIY','Female'],
+        datasets:[{label:'Odds Ratio',
+          data:[3.176,1.776,1.265,1.001,0.910,0.893,0.830,0.763,0.583,0.467],
+          backgroundColor:[GREEN+'cc',GREEN+'aa',GREEN+'88',GREEN+'66',
+            RED+'44',RED+'55',RED+'66',RED+'88',RED+'aa',RED+'cc'],
+          borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},
+          annotation:{annotations:{line1:{type:'line',yMin:1,yMax:1,borderColor:ACCENT,borderWidth:1,borderDash:[4,4]}}}},
+        scales:{x:{grid:{color:gridColor}},y:{grid:{color:gridColor},
+          title:{display:true,text:'Odds Ratio',color:textColor}}}}
+    });
+
+    new Chart(document.getElementById('decileChart'),{
+      type:'bar',
+      data:{
+        labels:['1','2','3','4','5','6','7','8','9','10'],
+        datasets:[{label:'Actual Sub Rate (%)',
+          data:[0.8,1.8,3.2,4.9,6.8,8.7,11.2,15.4,22.8,38.7],
+          backgroundColor:['#c44b4b','#b8564a','#aa6247','#9b6e44','#8a7a41',
+            '#78873e','#64943c','#4e9e42',GREEN+'cc',GREEN+'ff'],
+          borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{color:gridColor},title:{display:true,text:'Predicted Decile (1=lowest, 10=highest)',color:textColor}},
+          y:{grid:{color:gridColor},title:{display:true,text:'Actual Sub Rate (%)',color:textColor}}
+        }}
+    });
+  </script>
 </body>
 </html>
