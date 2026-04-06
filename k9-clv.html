@@ -33,16 +33,18 @@
     .nav-back { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-decoration: none; }
     .nav-back:hover { color: var(--accent); }
 
-    /* TOC */
+    /* TOC — only show when viewport is wide enough that dots clear the content column */
     .toc {
-      position: fixed; right: 2rem; top: 50%; transform: translateY(-50%);
-      z-index: 50; display: flex; flex-direction: column; gap: 0.5rem;
+      position: fixed; right: 1.25rem; top: 50%; transform: translateY(-50%);
+      z-index: 50; display: none; flex-direction: column; gap: 0.5rem;
     }
     .toc-dot {
       width: 6px; height: 6px; border-radius: 50%; background: var(--border-hover);
       cursor: pointer; transition: all 0.2s; border: none; padding: 0;
     }
     .toc-dot.active, .toc-dot:hover { background: var(--accent); transform: scale(1.4); }
+    /* 860px content + 2×3rem padding + ~60px for dots on each side ≈ 1080px min */
+    @media (min-width: 1080px) { .toc { display: flex; } }
 
     .page { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 8rem 3rem 6rem; }
     .breadcrumb { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 2rem; }
@@ -144,7 +146,7 @@
       .metrics-grid, .metrics-grid-3 { grid-template-columns: 1fr 1fr; }
       .pipeline { flex-direction: column; }
       .rec-grid { grid-template-columns: 1fr; }
-      .toc { display: none; }
+
     }
   </style>
 </head>
