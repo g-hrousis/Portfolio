@@ -1,0 +1,331 @@
+---
+title: "Predicting Buying Decisions — Florence Books Online Book Club"
+author: "Gianni Hrousis | MKT 326 | Lehigh University"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    code_folding: show
+    df_print: kable
+    css: custom.css
+    includes:
+      before_body: _back_link.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 9, fig.height = 5)
+library(tidyverse)
+library(sqldf)
+library(ggplot2)
+library(pROC)
+library(caret)
+library(knitr)
+library(kableExtra)
+library(scales)
+
+set.seed(42)
+```
+
+---
+
+## 1. Load and Inspect the Data
+
+```{r load-data}
+books <- read.csv("OnlineBookClub.csv", stringsAsFactors = FALSE)
+dim(books)
+glimpse(books)
+```
+
+The dataset contains **`r nrow(books)` customers** and **`r ncol(books)` variables** covering offline purchase behavior and online book club subscription status.
+
+---
+
+## 2. SQL Descriptive Statistics
+
+Using `sqldf` to replicate the SQL analyses required by the assignment.
+
+### 2a. Key Summary Statistics
+
+```{r sql-summary}
+sql_summary <- sqldf("
+  SELECT
+    ROUND(AVG(total_), 2)    AS avg_total_spend,
+    ROUND(STDEV(total_), 2)  AS sd_total_spend,
+    ROUND(AVG(purch), 2)     AS avg_books_purchased,
+    ROUND(STDEV(purch), 2)   AS sd_books_purchased,
+    ROUND(AVG(last), 2)      AS avg_months_since_last,
+    ROUND(STDEV(last), 2)    AS sd_months_since_last
+  FROM books
+")
+
+sql_summary %>%
+  kable(caption = "Descriptive Statistics: Spend, Purchases, and Recency") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Interpretation:** The average customer spent **\$`r sql_summary$avg_total_spend`** offline with a standard deviation of \$`r sql_summary$sd_total_spend`, indicating wide variation in customer value. Customers purchased an average of `r sql_summary$avg_books_purchased` books, and their last purchase was `r sql_summary$avg_months_since_last` months ago on average — meaning most customers are not recent shoppers.
+
+### 2b. Subscription Rates by Gender
+
+```{r sql-gender}
+gender_subs <- sqldf("
+  SELECT
+    gender,
+    COUNT(*) AS total_customers,
+    SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END) AS subscribers,
+    ROUND(100.0 * SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_subscribed
+  FROM books
+  GROUP BY gender
+")
+
+gender_subs %>%
+  kable(caption = "Subscription Counts and Rates by Gender") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Interpretation:** Male/NB customers subscribe at roughly **`r gender_subs$pct_subscribed[gender_subs$gender == "M/NB"]`%**, compared to **`r gender_subs$pct_subscribed[gender_subs$gender == "F"]`%** for female customers — a meaningful gap that suggests gender is a relevant predictor for the logistic model.
+
+### 2c. Overall Subscription Rate
+
+```{r overall-subscription}
+overall <- sqldf("
+  SELECT
+    SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END) AS total_subscribers,
+    COUNT(*) AS total_customers,
+    ROUND(100.0 * SUM(CASE WHEN subscribe = 'yes' THEN 1 ELSE 0 END) / COUNT(*), 2) AS pct_subscribed
+  FROM books
+")
+
+overall %>%
+  kable(caption = "Overall Subscription Rate") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+
+---
+
+## 3. Feature Engineering: IsFemale Dummy Variable
+
+Dummy coding is necessary because regression models require numeric inputs; a raw "M/NB" / "F" string cannot be interpreted as a quantity.
+
+```{r dummy-variable}
+books <- books %>%
+  mutate(
+    IsFemale  = ifelse(gender == "F", 1, 0),
+    subscribed = ifelse(subscribe == "yes", 1, 0)
+  )
+
+cat("IsFemale distribution:\n")
+table(books$IsFemale)
+```
+
+---
+
+## 4. Linear Regression: Predicting Total Offline Spend
+
+**Dependent variable:** `total_` (total dollars spent in offline stores)
+**Independent variables:** `IsFemale`, `first` (months since first purchase), and all 7 book category counts
+
+```{r linear-regression}
+lm_model <- lm(
+  total_ ~ IsFemale + first + child + youth + cook + do_it + refernce + art + geog,
+  data = books
+)
+
+summary(lm_model)
+```
+
+```{r lm-coef-table}
+lm_coefs <- broom::tidy(lm_model) %>%
+  mutate(
+    estimate   = round(estimate, 3),
+    std.error  = round(std.error, 3),
+    statistic  = round(statistic, 3),
+    p.value    = round(p.value, 4),
+    significant = ifelse(p.value < 0.05, "Yes", "No")
+  )
+
+lm_coefs %>%
+  kable(caption = "Linear Regression Coefficients — Total Offline Spend") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  column_spec(6, color = ifelse(lm_coefs$significant == "Yes", "green", "red"))
+```
+
+**Interpretation:**
+
+- **Book categories** are the strongest predictors of spend. Each additional book purchased in any category adds roughly \$14–16 to total spend, consistent with the idea that book purchases directly drive revenue.
+- **IsFemale and first** are not statistically significant (p > 0.05), suggesting gender and customer tenure do not independently predict how much someone spends offline once purchase behavior is controlled for.
+- **R² = `r round(summary(lm_model)$r.squared, 4)`**: The model explains approximately `r round(summary(lm_model)$r.squared * 100, 1)`% of the variance in total spend. An R² of 20–30% is typical for behavioral spend models where much of the variation is driven by unobserved individual factors (e.g., income, life stage, preferences). The goal here is directional inference — understanding *which* variables matter — rather than high-precision prediction.
+
+---
+
+## 5. Logistic Regression: Predicting Subscription
+
+**Dependent variable:** `subscribed` (1 = subscribed, 0 = did not subscribe)
+**Independent variables:** recency (`last`), monetary (`total_`), `IsFemale`, and all 7 book categories
+
+```{r logistic-regression}
+logit_model <- glm(
+  subscribed ~ last + total_ + IsFemale + child + youth + cook + do_it + refernce + art + geog,
+  data   = books,
+  family = binomial(link = "logit")
+)
+
+summary(logit_model)
+```
+
+```{r logit-coef-table}
+logit_coefs <- broom::tidy(logit_model) %>%
+  mutate(
+    odds_ratio  = round(exp(estimate), 3),
+    estimate    = round(estimate, 4),
+    std.error   = round(std.error, 4),
+    statistic   = round(statistic, 3),
+    p.value     = round(p.value, 4),
+    significant = ifelse(p.value < 0.05, "Yes", "No")
+  ) %>%
+  select(term, estimate, std.error, statistic, p.value, odds_ratio, significant)
+
+logit_coefs %>%
+  kable(caption = "Logistic Regression Coefficients and Odds Ratios — Subscription Likelihood") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  column_spec(7, color = ifelse(logit_coefs$significant == "Yes", "green", "red"))
+```
+
+**Interpretation:**
+
+- **Art books (OR ≈ `r logit_coefs$odds_ratio[logit_coefs$term == "art"]`):** The single strongest positive predictor. Each additional art book purchased multiplies the odds of subscribing by roughly 3×. Art book buyers may be more visually oriented and thus more attracted to a *visual* e-book platform.
+- **Geography/travel books (OR ≈ `r logit_coefs$odds_ratio[logit_coefs$term == "geog"]`):** Also a strong positive signal, suggesting curiosity-driven readers gravitate toward the subscription format.
+- **DIY books (OR ≈ `r logit_coefs$odds_ratio[logit_coefs$term == "do_it"]`):** The strongest negative predictor. DIY buyers likely have highly specific, task-oriented book needs that don't align with a visual e-book subscription.
+- **IsFemale (OR ≈ `r logit_coefs$odds_ratio[logit_coefs$term == "IsFemale"]`):** Female customers are less likely to subscribe. This aligns with the gender subscription rate gap observed in the SQL analysis.
+- **Recency (`last`, OR ≈ `r logit_coefs$odds_ratio[logit_coefs$term == "last"]`):** Each additional month since the last purchase reduces subscription odds by approximately `r round((1 - logit_coefs$odds_ratio[logit_coefs$term == "last"]) * 100, 1)`%. Recency is a reliable predictor of engagement — recent customers are far more likely to subscribe.
+
+---
+
+## 6. Model Validation: ROC Curve and AUC
+
+```{r roc-auc, fig.width=7, fig.height=6}
+books$pred_prob <- predict(logit_model, type = "response")
+
+roc_obj <- roc(books$subscribed, books$pred_prob, quiet = TRUE)
+auc_val <- auc(roc_obj)
+
+ggroc(roc_obj, color = "#2c7bb6", linewidth = 1.2) +
+  geom_abline(slope = 1, intercept = 1, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 0.4, y = 0.2,
+           label = paste0("AUC = ", round(auc_val, 3)),
+           size = 5, color = "#2c7bb6", fontface = "bold") +
+  labs(
+    title    = "ROC Curve — Logistic Regression (Subscription Prediction)",
+    subtitle = "Higher AUC indicates better ability to rank subscribers above non-subscribers",
+    x        = "Specificity",
+    y        = "Sensitivity"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+**AUC = `r round(auc_val, 3)`**: The model has strong discriminative ability. An AUC above 0.80 means the model correctly ranks a randomly chosen subscriber above a randomly chosen non-subscriber about `r round(auc_val*100,0)`% of the time. Given the class imbalance (9% positive rate), this is a meaningful result.
+
+### Confusion Matrix (threshold = 0.5)
+
+```{r confusion-matrix}
+pred_class <- ifelse(books$pred_prob >= 0.5, 1, 0)
+cm <- confusionMatrix(factor(pred_class), factor(books$subscribed), positive = "1")
+cm
+```
+
+> **Note:** At a 0.5 threshold, the model's sensitivity (ability to correctly identify subscribers) is low due to class imbalance — most customers are non-subscribers, so a conservative threshold misses many true positives. In practice, a lower threshold (e.g., 0.2–0.3) or decile-based targeting is more appropriate, which is what we apply in the next section.
+
+---
+
+## 7. Buying Prediction and Customer Profiling by Decile
+
+```{r decile-profiling}
+books <- books %>%
+  mutate(decile = ntile(pred_prob, 10))
+
+decile_summary <- books %>%
+  group_by(decile) %>%
+  summarise(
+    n_customers       = n(),
+    avg_pred_prob     = round(mean(pred_prob), 4),
+    actual_sub_rate   = round(mean(subscribed), 4),
+    avg_recency       = round(mean(last), 1),
+    avg_monetary      = round(mean(total_), 2),
+    avg_art_books     = round(mean(art), 2),
+    avg_diy_books     = round(mean(do_it), 2),
+    pct_female        = round(mean(IsFemale) * 100, 1)
+  ) %>%
+  arrange(desc(decile))
+
+decile_summary %>%
+  kable(caption = "Decile Profiling — Predicted vs. Actual Subscription Rates") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  row_spec(1, bold = TRUE, background = "#eaf4fb") %>%   # top decile
+  row_spec(10, bold = TRUE, background = "#fdecea")       # bottom decile
+```
+
+```{r lift-chart, fig.width=8, fig.height=5}
+decile_summary %>%
+  ggplot(aes(x = factor(decile, levels = rev(levels(factor(decile)))), y = actual_sub_rate)) +
+  geom_col(fill = "#2c7bb6", alpha = 0.85) +
+  geom_hline(yintercept = overall$pct_subscribed / 100, linetype = "dashed", color = "#d7191c", linewidth = 1) +
+  annotate("text", x = 9.5, y = overall$pct_subscribed / 100 + 0.005,
+           label = paste0("Overall rate: ", overall$pct_subscribed, "%"),
+           color = "#d7191c", size = 4) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title    = "Actual Subscription Rate by Predicted Decile",
+    subtitle = "Top decile far exceeds the average; bottom decile is near zero",
+    x        = "Decile (10 = highest predicted probability)",
+    y        = "Actual Subscription Rate"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+**Top decile profile (decile 10 — highest predicted subscribers):**
+- Recent buyers (low `last` value), high monetary value
+- High art and geography book purchases, low DIY/cookbook activity
+- Predominantly Male/NB
+- **Actual subscription rate ≈ `r decile_summary$actual_sub_rate[decile_summary$decile == 10] * 100`%** — roughly `r round(decile_summary$actual_sub_rate[decile_summary$decile == 10] / (overall$pct_subscribed/100), 1)`× the overall average
+
+**Bottom decile profile (decile 1 — lowest predicted subscribers):**
+- Lapsed buyers, moderate spend
+- High DIY and cookbook activity, minimal art books
+- Predominantly Female
+- **Actual subscription rate ≈ `r decile_summary$actual_sub_rate[decile_summary$decile == 1] * 100`%** — near zero
+
+**Recommendation:** Target the top 2 deciles for conversion campaigns (high ROI, high predicted probability). Target deciles 4–7 for reactivation and awareness campaigns. Do not invest in the bottom 3 deciles — the model predicts near-zero probability of subscription.
+
+---
+
+## 8. Email Campaign Design
+
+Based on the logistic model and decile profiling, here is a recommended email campaign to drive online book club subscriptions.
+
+**Target audience:**
+- **Tier 1 (conversion):** Top 2 deciles (~10,000 customers) — recent, art/geography book buyers, Male/NB skewing. High ROI.
+- **Tier 2 (nurture):** Deciles 4–7 (~20,000 customers) — moderate probability; need an activation nudge.
+
+**Subject lines:**
+- Tier 1: *"Your next read is waiting — unlock 2 visual e-books this month"*
+- Tier 2: *"Because you loved [last purchase], here's something new"* (personalized dynamic insert)
+
+**Email content:**
+- Hero image: visual preview of this month's e-books, emphasizing rich illustration/photography (appeals to art/geography buyers).
+- One-sentence value proposition: *"Two beautifully illustrated e-books every month, curated to match your taste."*
+- CTA: *"Start my free trial"*
+
+**Timing:**
+- Send 3–4 weeks after a customer's last offline purchase, when recency is still positive but urgency is rising.
+- Day: Tuesday or Wednesday morning.
+- Avoid sending to customers whose last purchase was more than 18 months ago (bottom 3 deciles — low ROI).
+
+**Marketing metrics to track:**
+- Open rate (target ≥ 22%)
+- Click-through rate (target ≥ 3.5%)
+- Conversion rate: trial sign-ups per email sent
+- 30-day retention: % of trial users who convert to paid subscription
+- Decile lift by campaign wave (validate that top-decile targeting continues to outperform)

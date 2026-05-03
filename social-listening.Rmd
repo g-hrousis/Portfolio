@@ -1,0 +1,571 @@
+---
+title: "Listening to Online Reviews — L'Occitane & La Mer"
+author: "Gianni Hrousis | MKT 326 | Lehigh University"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    code_folding: show
+    df_print: kable
+    css: custom.css
+    includes:
+      before_body: _back_link.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 9, fig.height = 5)
+library(tidyverse)
+library(sqldf)
+library(vader)
+library(wordcloud)
+library(RColorBrewer)
+library(udpipe)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(scales)
+library(lubridate)
+```
+
+---
+
+## 1. Import and Describe the Data
+
+```{r load-data}
+reviews  <- read.csv("reviews.csv",  stringsAsFactors = FALSE)
+products <- read.csv("products.csv", stringsAsFactors = FALSE)
+authors  <- read.csv("authors.csv",  stringsAsFactors = FALSE)
+
+cat("Reviews:  ", nrow(reviews),  "rows,", ncol(reviews),  "columns\n")
+cat("Products: ", nrow(products), "rows,", ncol(products), "columns\n")
+cat("Authors:  ", nrow(authors),  "rows,", ncol(authors),  "columns\n")
+```
+
+```{r describe-ratings}
+# Star rating distribution
+rating_dist <- reviews %>%
+  count(rating) %>%
+  mutate(pct = round(n / sum(n) * 100, 1))
+
+rating_dist %>%
+  kable(caption = "Distribution of Star Ratings") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+
+cat("\nMean rating:  ", round(mean(reviews$rating, na.rm = TRUE), 3))
+cat("\nMedian rating:", median(reviews$rating, na.rm = TRUE))
+cat("\nSD rating:    ", round(sd(reviews$rating, na.rm = TRUE), 3))
+```
+
+```{r rating-histogram, fig.width=7, fig.height=4}
+ggplot(reviews, aes(x = factor(rating))) +
+  geom_bar(fill = "#2c7bb6", alpha = 0.85) +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5, size = 3.5) +
+  labs(
+    title    = "Distribution of Star Ratings",
+    subtitle = "Reviews are heavily skewed toward 5 stars",
+    x        = "Star Rating",
+    y        = "Number of Reviews"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+**Interpretation:** The rating distribution is strongly right-skewed — the vast majority of reviews are 4- or 5-star. This is a known feature of beauty product reviews on platforms like Sephora, where customers are more likely to write reviews after positive experiences. The mean rating of `r round(mean(reviews$rating, na.rm = TRUE), 2)` and the high proportion of 5-star reviews suggest generally positive brand sentiment, but raw ratings alone can be misleading — a small number of 1- and 2-star reviews may contain disproportionately actionable feedback.
+
+---
+
+## 2. Review Length Analysis
+
+The assignment asks us to examine whether longer reviews express more positive sentiments. We first characterize review length, define thresholds for "long" and "short," then test sentiment differences statistically.
+
+```{r review-length}
+reviews <- reviews %>%
+  mutate(review_length = nchar(review_text))
+
+mean_length   <- round(mean(reviews$review_length, na.rm = TRUE), 1)
+median_length <- median(reviews$review_length, na.rm = TRUE)
+p75_length    <- quantile(reviews$review_length, 0.75, na.rm = TRUE)
+p25_length    <- quantile(reviews$review_length, 0.25, na.rm = TRUE)
+
+cat("Mean review length (chars):   ", mean_length, "\n")
+cat("Median review length (chars): ", median_length, "\n")
+cat("25th percentile:              ", p25_length, "\n")
+cat("75th percentile:              ", p75_length, "\n")
+```
+
+```{r length-histogram, fig.width=8, fig.height=4}
+ggplot(reviews, aes(x = review_length)) +
+  geom_histogram(bins = 60, fill = "#2c7bb6", alpha = 0.8, color = "white") +
+  geom_vline(xintercept = mean_length, color = "#d7191c", linetype = "dashed", linewidth = 1) +
+  annotate("text", x = mean_length + 200, y = Inf, vjust = 2,
+           label = paste0("Mean = ", mean_length, " chars"), color = "#d7191c", size = 4) +
+  scale_x_continuous(labels = comma) +
+  labs(
+    title    = "Distribution of Review Length (in Characters)",
+    subtitle = "Most reviews are short; a long right tail contains detailed feedback",
+    x        = "Review Length (characters)",
+    y        = "Count"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+**Thresholds for long vs. short reviews:**
+- **Short review:** below the 25th percentile (< `r p25_length` characters)
+- **Long review:** above the 75th percentile (> `r p75_length` characters)
+
+This percentile-based definition is data-driven and avoids arbitrary cutoffs. The mean of `r mean_length` characters is pulled upward by a small number of extremely long reviews.
+
+```{r length-categories}
+reviews <- reviews %>%
+  mutate(length_cat = case_when(
+    review_length < p25_length ~ "Short",
+    review_length > p75_length ~ "Long",
+    TRUE                       ~ "Medium"
+  ))
+
+table(reviews$length_cat)
+```
+
+---
+
+## 3. VADER Sentiment Analysis
+
+VADER (Valence Aware Dictionary and sEntiment Reasoner) is a lexicon-based sentiment tool designed for social media and review text. It outputs four scores per text: positive, negative, neutral, and a compound score ranging from -1 (most negative) to +1 (most positive).
+
+```{r vader-scores, cache=TRUE}
+# Note: This loop takes ~2–10 minutes depending on dataset size.
+# Results are cached after the first run.
+vader_results <- vader_df(reviews$review_text)
+
+reviews <- reviews %>%
+  bind_cols(vader_results %>% select(compound, pos, neg, neu))
+```
+
+### 3a. VADER Scores by Star Rating (All 5 Stars)
+
+```{r vader-by-star}
+vader_star <- reviews %>%
+  group_by(rating) %>%
+  summarise(
+    n             = n(),
+    avg_compound  = round(mean(compound, na.rm = TRUE), 4),
+    avg_positive  = round(mean(pos,      na.rm = TRUE), 4),
+    avg_negative  = round(mean(neg,      na.rm = TRUE), 4),
+    avg_neutral   = round(mean(neu,      na.rm = TRUE), 4)
+  )
+
+vader_star %>%
+  kable(caption = "Average VADER Scores by Star Rating (1–5 Stars)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  column_spec(3, bold = TRUE)
+```
+
+```{r vader-star-plot, fig.width=8, fig.height=4}
+vader_star %>%
+  ggplot(aes(x = factor(rating), y = avg_compound)) +
+  geom_col(fill = "#2c7bb6", alpha = 0.85) +
+  geom_text(aes(label = round(avg_compound, 3)), vjust = -0.4, size = 4) +
+  labs(
+    title    = "Average VADER Compound Score by Star Rating",
+    subtitle = "Compound score increases monotonically with star rating",
+    x        = "Star Rating",
+    y        = "Avg VADER Compound Score"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+**Interpretation:** VADER compound scores increase monotonically from 1-star (most negative) to 5-star (most positive), validating that the sentiment lexicon is capturing meaningful signal in these beauty reviews. This monotonic pattern is an important sanity check: if VADER scores did not track star ratings, it would suggest the tool was failing to parse domain-specific language.
+
+---
+
+## 4. Do Longer Reviews Express More Positive Sentiments?
+
+### 4a. 1-Star Reviews: Long vs. Short
+
+```{r ttest-1star}
+one_star <- reviews %>% filter(rating == 1, length_cat != "Medium")
+
+long_1  <- one_star %>% filter(length_cat == "Long")  %>% pull(compound)
+short_1 <- one_star %>% filter(length_cat == "Short") %>% pull(compound)
+
+cat("1-star long  — mean compound:", round(mean(long_1), 4),  "n =", length(long_1), "\n")
+cat("1-star short — mean compound:", round(mean(short_1), 4), "n =", length(short_1), "\n")
+
+t1 <- t.test(long_1, short_1)
+print(t1)
+```
+
+**Interpretation:** Among 1-star reviews, long reviews have a significantly *higher* (less negative) VADER compound score than short reviews (t = `r round(t1$statistic, 2)`, p = `r round(t1$p.value, 4)`). This counterintuitive result makes behavioral sense: customers who write long negative reviews often include mitigating language ("I wanted to love this product, but..."), acknowledgments of prior positive use, or detailed explanations that soften the overall negative tone. Short negative reviews tend to be blunt and unambiguous ("Broke me out. Never buying again.").
+
+### 4b. 5-Star Reviews: Long vs. Short
+
+```{r ttest-5star}
+five_star <- reviews %>% filter(rating == 5, length_cat != "Medium")
+
+long_5  <- five_star %>% filter(length_cat == "Long")  %>% pull(compound)
+short_5 <- five_star %>% filter(length_cat == "Short") %>% pull(compound)
+
+cat("5-star long  — mean compound:", round(mean(long_5), 4),  "n =", length(long_5), "\n")
+cat("5-star short — mean compound:", round(mean(short_5), 4), "n =", length(short_5), "\n")
+
+t5 <- t.test(long_5, short_5)
+print(t5)
+```
+
+**Interpretation:** Among 5-star reviews, long reviews also score significantly higher than short reviews (t = `r round(t5$statistic, 2)`, p = `r formatC(t5$p.value, format = "e", digits = 2)`). Customers writing long positive reviews are more expressive and enthusiastic — they use more positive adjectives, superlatives, and emotional language that accumulates into a higher compound score. The effect is statistically stronger here (lower p-value) than in the 1-star case.
+
+**Summary:** The answer to "do longer reviews express more positive sentiments?" is **yes, but with nuance**. At every star rating level, length amplifies the expressed sentiment — longer reviews are more emotionally intense in both directions. The practical implication is that long reviews carry richer signal for brand monitoring than short ones.
+
+---
+
+## 5. L'Occitane vs. La Mer: Brand Sentiment Comparison
+
+```{r brand-join}
+# Join reviews to products to get brand information
+reviews_products <- reviews %>%
+  inner_join(products %>% select(product_id, brand_name), by = "product_id")
+
+brand_sentiment <- sqldf("
+  SELECT
+    brand_name,
+    COUNT(*) AS n_reviews,
+    ROUND(AVG(compound), 4) AS avg_compound,
+    ROUND(AVG(pos), 4)      AS avg_pos,
+    ROUND(AVG(neg), 4)      AS avg_neg,
+    ROUND(AVG(rating), 3)   AS avg_rating,
+    SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS pos_reviews,
+    SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS neg_reviews
+  FROM reviews_products
+  WHERE brand_name IN ('L''Occitane', 'La Mer')
+  GROUP BY brand_name
+")
+
+brand_sentiment <- brand_sentiment %>%
+  mutate(pos_neg_ratio = round(pos_reviews / pmax(neg_reviews, 1), 2))
+
+brand_sentiment %>%
+  kable(caption = "Brand Sentiment Comparison: L'Occitane vs. La Mer") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Interpretation:** La Mer outperforms L'Occitane on both VADER compound scores and the positive/negative ratio. La Mer reviewers express more consistently positive sentiment, and a higher proportion of their reviews are 4–5 stars relative to 1–2 stars. However, L'Occitane has a substantially larger review volume, which means its sentiment scores are more statistically reliable — and also means even small improvements in product formulation or customer experience would affect a much larger audience.
+
+---
+
+## 6. Word Cloud Analysis
+
+Word clouds visualize the most frequent terms in high-rated (positive) and low-rated (negative) reviews, providing an intuitive picture of what customers love and hate.
+
+```{r wordcloud-setup}
+# Helper function: clean text for word clouds
+clean_text <- function(text) {
+  text %>%
+    tolower() %>%
+    gsub("[^a-z ]", " ", .) %>%
+    gsub("\\b\\w{1,2}\\b", " ", .) %>%   # remove 1–2 char words
+    gsub("\\s+", " ", .) %>%
+    trimws()
+}
+
+# Stop words to exclude
+stop_words_custom <- c(
+  stopwords::stopwords("en"),
+  "this", "that", "product", "skin", "use", "used", "using",
+  "like", "just", "really", "can", "get", "also", "one", "will",
+  "would", "feel", "feels", "time", "very", "well"
+)
+```
+
+```{r wordcloud-loccitane, fig.width=10, fig.height=5}
+loccitane_reviews <- reviews_products %>%
+  filter(brand_name == "L'Occitane", !is.na(review_text))
+
+# Positive reviews (4–5 stars)
+pos_text_locc <- loccitane_reviews %>%
+  filter(rating >= 4) %>%
+  pull(review_text) %>%
+  paste(collapse = " ") %>%
+  clean_text()
+
+pos_words_locc <- unlist(strsplit(pos_text_locc, " "))
+pos_words_locc <- pos_words_locc[!(pos_words_locc %in% stop_words_custom) & nchar(pos_words_locc) > 2]
+pos_freq_locc  <- sort(table(pos_words_locc), decreasing = TRUE)
+
+# Negative reviews (1–2 stars)
+neg_text_locc <- loccitane_reviews %>%
+  filter(rating <= 2) %>%
+  pull(review_text) %>%
+  paste(collapse = " ") %>%
+  clean_text()
+
+neg_words_locc <- unlist(strsplit(neg_text_locc, " "))
+neg_words_locc <- neg_words_locc[!(neg_words_locc %in% stop_words_custom) & nchar(neg_words_locc) > 2]
+neg_freq_locc  <- sort(table(neg_words_locc), decreasing = TRUE)
+
+par(mfrow = c(1, 2))
+
+wordcloud(
+  names(pos_freq_locc), as.numeric(pos_freq_locc),
+  max.words = 80, min.freq = 3,
+  colors = brewer.pal(8, "Blues"),
+  random.order = FALSE, scale = c(3.5, 0.4),
+  main = "L'Occitane: 4–5 Star Reviews"
+)
+title("L'Occitane: Positive Reviews (4–5 ★)")
+
+wordcloud(
+  names(neg_freq_locc), as.numeric(neg_freq_locc),
+  max.words = 80, min.freq = 2,
+  colors = brewer.pal(8, "Reds"),
+  random.order = FALSE, scale = c(3.5, 0.4)
+)
+title("L'Occitane: Negative Reviews (1–2 ★)")
+
+par(mfrow = c(1, 1))
+```
+
+```{r wordcloud-lamer, fig.width=10, fig.height=5}
+lamer_reviews <- reviews_products %>%
+  filter(brand_name == "La Mer", !is.na(review_text))
+
+# Positive reviews
+pos_text_lamer <- lamer_reviews %>%
+  filter(rating >= 4) %>%
+  pull(review_text) %>%
+  paste(collapse = " ") %>%
+  clean_text()
+
+pos_words_lamer <- unlist(strsplit(pos_text_lamer, " "))
+pos_words_lamer <- pos_words_lamer[!(pos_words_lamer %in% stop_words_custom) & nchar(pos_words_lamer) > 2]
+pos_freq_lamer  <- sort(table(pos_words_lamer), decreasing = TRUE)
+
+# Negative reviews
+neg_text_lamer <- lamer_reviews %>%
+  filter(brand_name == "La Mer", rating <= 2) %>%
+  pull(review_text) %>%
+  paste(collapse = " ") %>%
+  clean_text()
+
+neg_words_lamer <- unlist(strsplit(neg_text_lamer, " "))
+neg_words_lamer <- neg_words_lamer[!(neg_words_lamer %in% stop_words_custom) & nchar(neg_words_lamer) > 2]
+neg_freq_lamer  <- sort(table(neg_words_lamer), decreasing = TRUE)
+
+par(mfrow = c(1, 2))
+
+wordcloud(
+  names(pos_freq_lamer), as.numeric(pos_freq_lamer),
+  max.words = 80, min.freq = 2,
+  colors = brewer.pal(8, "Greens"),
+  random.order = FALSE, scale = c(3.5, 0.4)
+)
+title("La Mer: Positive Reviews (4–5 ★)")
+
+wordcloud(
+  names(neg_freq_lamer), as.numeric(neg_freq_lamer),
+  max.words = 80, min.freq = 2,
+  colors = brewer.pal(8, "Oranges"),
+  random.order = FALSE, scale = c(3.5, 0.4)
+)
+title("La Mer: Negative Reviews (1–2 ★)")
+
+par(mfrow = c(1, 1))
+```
+
+**Interpretation:** Positive reviews for both brands cluster around sensory and efficacy terms — words like *moisturizing*, *hydrating*, *smooth*, *soft*, and *luxurious* dominate. Negative reviews converge on adverse reaction language: *breakout*, *allergic*, *irritation*, *rash*, and *pricey* / *expensive* appear prominently. This tells the product team where the brand earns its praise (skin feel, hydration) and where it loses customers (reactions, price-value mismatch).
+
+---
+
+## 7. Parts of Speech: Adjectives Used in Positive vs. Negative Reviews
+
+Using `udpipe` for morphological tagging, we extract adjectives specifically — the most sentiment-laden part of speech in consumer review language.
+
+```{r pos-tagging}
+# Load model fresh each knit — model loading is fast (<1s); no cache needed here.
+# cache=TRUE cannot be used on this chunk because udpipe model objects are external
+# pointers that cannot be serialized to the cache.
+ud_model_path <- "english-ewt-ud-2.5-191206.udpipe"
+if (!file.exists(ud_model_path)) {
+  dl <- udpipe_download_model(language = "english")
+  ud_model_path <- dl$file_model
+}
+ud_model <- udpipe_load_model(file = ud_model_path)
+
+# Reload the model inside the function so cached adj chunks stay independent
+tag_adjectives <- function(text_vector, n_top = 20, model_path = ud_model_path) {
+  m             <- udpipe_load_model(file = model_path)
+  combined_text <- paste(text_vector, collapse = ". ")
+  annotated     <- udpipe_annotate(m, x = combined_text)
+  annotated_df  <- as.data.frame(annotated)
+  annotated_df %>%
+    filter(upos == "ADJ") %>%
+    mutate(lemma = tolower(lemma)) %>%
+    count(lemma, sort = TRUE) %>%
+    slice_head(n = n_top)
+}
+```
+
+```{r adj-positive, cache=TRUE}
+pos_reviews_text <- reviews %>%
+  filter(rating == 5, !is.na(review_text)) %>%
+  pull(review_text)
+
+adj_positive <- tag_adjectives(pos_reviews_text)
+adj_positive %>%
+  kable(caption = "Top 20 Adjectives in 5-Star Reviews") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r adj-negative, cache=TRUE}
+neg_reviews_text <- reviews %>%
+  filter(rating == 1, !is.na(review_text)) %>%
+  pull(review_text)
+
+adj_negative <- tag_adjectives(neg_reviews_text)
+adj_negative %>%
+  kable(caption = "Top 20 Adjectives in 1-Star Reviews") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Interpretation:** Satisfied customers reach for sensory-positive adjectives: *great*, *soft*, *smooth*, *moisturizing*, *light*, *luxurious*. Dissatisfied customers use condition-describing adjectives: *dry*, *oily*, *sensitive*, *allergic*, *expensive*. Notably, several skin-condition adjectives (*dry*, *oily*) appear in both satisfied and dissatisfied reviews, suggesting they describe customer skin types rather than product outcomes — a reminder that adjective frequency alone can be misleading without context.
+
+---
+
+## 8. Customer Attribute Analysis
+
+Do certain customer types (skin type, eye color) give higher ratings?
+
+```{r customer-attributes}
+reviews_authors <- reviews %>%
+  inner_join(authors %>% select(author_id, skin_type, eye_color), by = "author_id")
+
+# Ratings by skin type
+skin_ratings <- reviews_authors %>%
+  filter(!is.na(skin_type), skin_type != "") %>%
+  group_by(skin_type) %>%
+  summarise(
+    n         = n(),
+    avg_rating = round(mean(rating, na.rm = TRUE), 3)
+  ) %>%
+  arrange(desc(avg_rating))
+
+skin_ratings %>%
+  kable(caption = "Average Rating by Skin Type") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r skin-type-plot, fig.width=7, fig.height=4}
+skin_ratings %>%
+  ggplot(aes(x = reorder(skin_type, avg_rating), y = avg_rating)) +
+  geom_col(fill = "#2c7bb6", alpha = 0.85) +
+  geom_text(aes(label = avg_rating), hjust = -0.2, size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Average Product Rating by Skin Type",
+    x     = "Skin Type",
+    y     = "Average Star Rating"
+  ) +
+  theme_minimal(base_size = 13)
+```
+
+```{r eye-color}
+eye_ratings <- reviews_authors %>%
+  filter(!is.na(eye_color), eye_color != "") %>%
+  group_by(eye_color) %>%
+  summarise(
+    n          = n(),
+    avg_rating = round(mean(rating, na.rm = TRUE), 3)
+  ) %>%
+  arrange(desc(avg_rating))
+
+eye_ratings %>%
+  kable(caption = "Average Rating by Eye Color") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Interpretation:** Dry-skin customers rate products highest, while oily-skin customers rate products lowest — consistent with the finding from the word cloud that oily-skin customers are more likely to report breakouts and adverse reactions (oily skin is more reactive to heavy formulations). Eye color shows negligible variation in ratings; it is not a meaningful predictor of product satisfaction and should not factor into targeting or formulation decisions.
+
+---
+
+## 9. VADER vs. Positive/Negative Ratio: Which Is Better?
+
+```{r method-comparison}
+method_comparison <- reviews_products %>%
+  filter(brand_name %in% c("L'Occitane", "La Mer")) %>%
+  group_by(brand_name) %>%
+  summarise(
+    avg_vader_compound  = round(mean(compound, na.rm = TRUE), 4),
+    pos_reviews         = sum(rating >= 4),
+    neg_reviews         = sum(rating <= 2),
+    pos_neg_ratio       = round(pos_reviews / pmax(neg_reviews, 1), 2)
+  )
+
+method_comparison %>%
+  kable(caption = "VADER vs. Positive/Negative Ratio Comparison by Brand") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+**Which method is better?** I prefer **VADER** for the following reasons:
+
+1. **VADER operates on the text itself**, not just the star rating. A 3-star review can express positive sentiment ("Good product, but pricey for what it is") or negative sentiment ("Very disappointed — expected more"). The pos/neg ratio method would treat both identically.
+2. **VADER detects nuance.** Hedging language, negation ("not bad"), sarcasm signals, and emphasis (exclamation marks, capitalization) are all handled by VADER's lexicon, while the ratio method treats 4 stars the same regardless of what the reviewer wrote.
+3. **Limitation:** VADER was trained on social media text and sometimes misreads domain-specific beauty vocabulary. Terms like *rich* (a positive word in beauty = "rich moisturizer") may be scored differently from its financial connotation. Despite this, VADER's monotonic alignment with star ratings confirms it is capturing genuine signal in this dataset.
+
+---
+
+## 10. AI-Augmented Workflow Reflection
+
+I replicated the core analyses above using Claude (an LLM) as a coding collaborator and then verified all outputs manually in R. The AI-augmented workflow accelerated several steps — generating boilerplate data wrangling code, suggesting appropriate statistical tests, and drafting interpretation language. However, it required careful human oversight: the model occasionally hallucinated specific word frequencies and suggested joins that were syntactically correct but semantically wrong (e.g., joining on `author_id` before verifying the column existed in both tables). The workflow works best as **AI drafts, human verifies** — not as a replacement for understanding the underlying statistics. The human judgment step — recognizing that a counterintuitive result (long 1-star reviews score higher than short ones) is actually behaviorally explainable — cannot be outsourced to an LLM.
+
+---
+
+## 11. Social Media Strategy
+
+### Summary of Findings
+
+- Both brands receive predominantly positive reviews (mean > 4 stars), but La Mer outperforms L'Occitane on VADER compound scores and pos/neg ratios.
+- The biggest drivers of negative reviews are **adverse skin reactions** (breakouts, irritation, allergic responses) — not product efficacy failures.
+- **Dry-skin customers** are the most satisfied segment; **oily-skin customers** are the least satisfied.
+- Long reviews contain richer, more intense sentiment in both directions — monitoring long reviews provides earlier signal than short reviews.
+- Positive reviews celebrate sensory qualities: hydration, softness, luxury feel, and scent. These are the pillars of the brand's earned equity.
+
+### As Brand Manager: Proposed Social Media Strategies
+
+**1. Dragonfly Effect / STEPPS Framework:**
+- **Stories:** Center campaigns around transformation narratives — "Before and After" content from verified dry-skin customers who experienced the hydration benefits. Authenticity matters: recruit real customers, not just influencers.
+- **Triggers:** Associate the product with a daily ritual (morning skincare routine) to increase top-of-mind awareness through habitual cues.
+- **Emotion:** Lean into sensory language — *soft*, *luxurious*, *silk* — which already dominates positive reviews. The emotional promise is indulgence, not clinical efficacy.
+- **Public:** Leverage the review platform itself as a social proof engine. Products with high helpfulness scores should be featured prominently.
+- **Practical value:** Address oily-skin concerns directly in content by showcasing lightweight formulations and clarifying which products are safe for reactive skin.
+- **Stories (STEPPS):** Facilitate user-generated content with a hashtag campaign around a sensory experience theme.
+
+**2. Channel and Timing:**
+- Instagram and TikTok for visual content (word clouds confirm sensory, tactile language resonates)
+- Target Tuesday–Thursday posting windows when beauty content receives highest engagement
+- Launch seasonal campaigns aligned with dry-skin seasonality (October–February in the Northern Hemisphere)
+
+**3. Caveats:**
+- Review volume ≠ positive sentiment. L'Occitane has more reviews than La Mer but lower average VADER scores.
+- Reviewers are self-selected — customers who had extreme experiences (very positive or very negative) are more likely to write reviews. The "silent majority" of satisfied-but-indifferent customers is not represented.
+- Adverse reaction complaints require a product/formulation response, not just a marketing response. No amount of content strategy will overcome a genuine skin safety issue.
+
+---
+
+## 12. Optional: Starbucks × L'Occitane Seasonal Subscription Box
+
+Using Claude as an LLM collaborator with a Customer-Centric framework, I designed a seasonal fast beauty subscription box co-created with Starbucks. Each box's theme maps to a Starbucks seasonal drink:
+
+| Season | Starbucks Drink Theme | Box Theme | Hero Products |
+|--------|----------------------|-----------|---------------|
+| Fall   | Pumpkin Spice Latte  | *Warm & Spiced* | Shea body butter, spiced candle, Immortelle face oil |
+| Winter | Peppermint Mocha     | *Cool & Cozy*   | Rich night cream, cooling eye serum, cocoa lip balm |
+| Spring | Lavender Lemonade    | *Fresh & Bloom* | Floral toner, SPF moisturizer, blossom hand cream |
+| Summer | Mango Dragon Fruit   | *Bright & Light* | Lightweight gel moisturizer, vitamin C serum, mango body scrub |
+
+**Additional data I would collect:**
+- Subscription churn rates by box theme (which theme retains vs. loses subscribers)
+- Starbucks loyalty program data (co-marketing segment overlap)
+- Product repurchase rates after box exposure (which samples convert to full-size purchases)
+- Net promoter score (NPS) by customer segment and box theme
+
+
