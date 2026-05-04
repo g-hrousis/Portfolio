@@ -8,7 +8,7 @@ Live site: **[g-hrousis.github.io/Portfolio](https://g-hrousis.github.io/Portfol
 
 ## About
 
-Business Analytics graduate with hands-on experience building a franchise operation from the ground up — from coordinating a $5M SBA loan to designing the analytical infrastructure, CLV models, and operational dashboards that drive a $1.5M-revenue business. Proficient in Python, R, SQL, Tableau, and Power BI.
+Strategy and analytics-driven business operator with a track record of translating complex data into actionable recommendations. Built and scaled a $2.3M franchise from pre-launch with full P&L ownership, leading pricing strategy, CLV modeling, and cross-functional team execution. Currently running a 3-client analytics consultancy serving K9 Resorts franchise operators across $6.6M in combined revenue. Proficient in Python, R, SQL, Tableau, Power BI, and AWS.
 
 ---
 
@@ -31,8 +31,8 @@ Business Analytics graduate with hands-on experience building a franchise operat
 |---|---------|-------------|-------|
 | 01 | [Social Listening & Sentiment Analysis](social-listening.html) | VADER sentiment scoring, word clouds, POS tagging, and t-tests on Sephora review data comparing L'Occitane vs La Mer | R, VADER, tidytext, ggplot2, sqldf |
 | 02 | [Predicting Buying Decisions](buying-decisions.html) | Linear and logistic regression on 50,000 Florence Books customers to predict online book club subscriptions; decile profiling for email campaign targeting | R, Logistic Regression, sqldf |
-| 03 | [Netflix CLV Modeling](netflix-clv.html) | Full CLV model for Netflix's 52.77M U.S. subscribers segmented by original series viewership; quantifies max content investment budget at ~$363M | R, CLV Modeling, Attrition Analysis |
-| 04 | Digital Presence | TBD | TBD |
+| 03 | [Netflix CLV Modeling](netflix-clv.html) | Full CLV model for Netflix's 52.77M U.S. subscribers segmented by original series viewership; mid-year discounting, sensitivity analysis across adoption rates | R, CLV Modeling, Attrition Analysis |
+| 04 | [Promoting Digital Presence](digital-presence.html) | SEO/AEO/SEM audit of zachjordan.io, keyword strategy, email A/B test design, and GA4 traffic analysis of this portfolio site | SEO, Google Analytics, AEO, SEM |
 
 ---
 
@@ -52,21 +52,30 @@ Business Analytics graduate with hands-on experience building a franchise operat
 
 | Category | Tools |
 |----------|-------|
-| Languages | Python (Pandas, NumPy, Scikit-learn), R, SQL, C/C++ |
-| Databases | MySQL, AWS RDS |
-| Visualization | Tableau, Power BI, ggplot2, Seaborn, Plotly |
-| Finance | Bloomberg Terminal, Excel (Advanced), Financial Modeling |
-| Analytics | CLV Modeling, Regression Analysis, Sentiment Analysis, RFM Segmentation |
+| Technical | Python, R, SQL, Tableau, Power BI, Excel (Advanced), AWS (S3, EC2, RDS) |
+| Analytics | Predictive Modeling, CLV Modeling, Statistical Analysis, Segmentation Modeling, Financial Modeling |
+| Consulting | Client Communication, Structured Problem Solving, Executive Presentation Development, Project Management |
+| AI & Productivity | Leveraging AI to accelerate research, automate analysis workflows, and increase delivery productivity |
 
 ---
 
 ## Experience
 
-**K9 Resorts Luxury Pet Hotel — Manager** *(Feb 2023 – Present)*
-Joined prior to launch. Coordinated $5M SBA loan, built financial dashboards and CLV models across 400,000+ data points, drove 8% cost reduction and 9% margin improvement, improved client retention 30% across 1,200+ accounts.
+**K9 Resorts — Founding Operator & Analytics Strategy Lead** *(Feb 2023 – Present)*
+Built scalable data infrastructure (AWS S3/EC2/RDS, SQL) enabling analysis of 900K+ customer records across 15 datasets. Developed CLV and segmentation models identifying that 21% of customers drove 65% of revenue. Led pricing strategy analysis quantifying ~$258K in annualized revenue uplift. Designed a 4-tier loyalty program targeting 735 at-risk customers with $445K+ projected annual revenue recovery. Built and scaled a $2.3M revenue franchise from pre-launch with full P&L ownership across a 25-person team.
 
-**D'Huy Engineering — Project Management Intern** *(Jul 2021 – Aug 2021)*
-Supported multi-stakeholder engineering project reconciliation. Designed a commercial HVAC system in AutoCAD.
+**Pack Performance — Founding Consultant & Analytics Lead** *(Dec 2025 – Present)*
+Built and scaled a 3-client analytics consultancy serving K9 Resorts franchise operators across $6.6M in combined annual revenue. Designed a repeatable 4-stage delivery pipeline (data extraction, modeling, segmentation, reporting). Developed CLV models identifying Month 3 as a key churn inflection point, informing a $500K+ projected revenue recovery plan.
+
+---
+
+## Education
+
+**Lehigh University — B.S. Business Analytics** · May 2026
+Coursework: Predictive Analytics, Business Data Management, Marketing Analytics, Investments, Leadership & Strategy
+
+**McKinsey Forward Program** · June 2026
+Coursework in leadership, structured problem-solving, and business analysis
 
 ---
 
